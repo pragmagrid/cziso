@@ -8,6 +8,7 @@ import json
 import os
 import re
 from oauth2client.service_account import ServiceAccountCredentials
+import shutil
 import subprocess
 import time
 import urllib2
@@ -82,6 +83,8 @@ class Clonezilla:
 		expect_path = self.write_create_expect_script(ip, tmp, netmask, vm_id)
 		self.logger.info("Running gen-rec-iso Clonezilla script")
 		subprocess.call("expect %s" % expect_path, shell=True)
+
+		# get ISO image
 		iso_file = "clonezilla-live-%s.iso" % vm_id
 		dst_file = os.path.join(self.temp_dir, iso_file)
 		os.rename(os.path.join(tmp, iso_file), dst_file)
@@ -90,7 +93,7 @@ class Clonezilla:
 		# cleanup
 		self.clean_clonezilla_vm()
 		cziso.remove_nfs_export(tmp, ip)
-		os.shutil(tmp)
+		shutil.rmtree(tmp)
 		cziso.remove_loop_device(loop_device)
 
 	def create_temp_directory(self):
