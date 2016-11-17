@@ -1,0 +1,41 @@
+#!/usr/bin/expect
+
+#exp_internal 1
+set timeout 600
+
+spawn /usr/bin/virsh console $vm_name
+
+expect "Connected to domain $vm_name"
+expect "Escape character is ^]"
+
+expect "user@debian:~"
+send "\nsudo su - root\n"
+expect "\n"
+
+send "ifconfig eth0 $ip netmask $netmask\n"
+expect "\n"
+send "mount 10.1.1.1:$temp_dir /home/partimag\n"
+expect "\n"
+send "touch /home/partimag/file\n"
+expect "\n"
+send "rm -f /home/partimag/file\n"
+expect "\n"
+
+set timeout 86400
+send "/usr/share/drbl/samples/gen-rec-iso -p vda -b /dev/vda $vm_id\n"
+expect {           
+    "Partclone fail" {
+        send "\r"
+    } "The target ISO file is too large to fit on a * disk" {
+        send "yes\r"
+        set timeout -1
+        expect "Are you sure you want to continue?"
+        expect "\\\[y/N] "
+        send "y\n"
+        expect "done!"
+        send "shutdown now\n"
+        expect "press ENTER to continue:"
+        send "\n"
+        expect eof
+    }
+}

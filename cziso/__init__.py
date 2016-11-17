@@ -11,7 +11,7 @@ import urllib2
 
 logger = None
 
-__all__ = ["clonezilla"]
+__all__ = ["clonezilla", "image"]
 
 
 def abort(error):
@@ -46,29 +46,6 @@ def config_logging(loglevel="INFO", logfile=None):
 	global logger
 	logger = logging.getLogger(sys.argv[0])
 	return logging.getLogger(sys.argv[0])
-
-
-def create_loop_device(image):
-	"""
-	Mount an image file as a block device.
-
-	:param image: A path to an image file
-
-	:return: The loop device id
-	"""
-	out, rc = run_command("losetup -f %s" % image)
-	if rc != 0:
-		abort("Unable to mount %s as a control loop device")
-	out, rc = run_command("losetup -a")
-	loop_device = None
-	for line in out:
-		if line.find(image) >= 0:
-			matcher = re.search("(/dev/loop\d+)", line)
-			if matcher:
-				loop_device = matcher.group(1)
-				return loop_device
-	if not loop_device:
-		abort("Unable to find loop device for %s" % image)
 
 
 def create_nfs_export(dir, ip):
@@ -167,19 +144,6 @@ def get_command(args):
 		except ImportError:
 			continue
 	return None, None
-
-
-def remove_loop_device(loop_device):
-	"""
-	Unmount image from loop device.  Returns if successful; otherwise aborts.
-
-	:param loop_device: The loop device id (/dev/loopX)
-
-	:return:
-	"""
-	out, rc = run_command("losetup -d %s" % loop_device)
-	if rc != 0:
-		abort("Unable to remove loop device %s" % loop_device)
 
 
 def remove_nfs_export(dir, ip):
