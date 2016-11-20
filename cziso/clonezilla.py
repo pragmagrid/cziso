@@ -1,51 +1,32 @@
-import apiclient.discovery
-import cookielib
+#import apiclient.discovery
 import cziso
-import libvirt
+import cziso.virtualmachine
 import logging
-import httplib2
-import json
+#import httplib2
+#import json
 import os
-import re
-from oauth2client.service_account import ServiceAccountCredentials
+#from oauth2client.service_account import ServiceAccountCredentials
 import shutil
 import subprocess
 import time
-import urllib2
-from xml.etree import ElementTree as ET
-
+#import urllib2
 
 
 class Clonezilla:
 	SCOPE = "https://www.googleapis.com/auth/drive"
-	CLONEZILLA_VM_PREFIX = "cziso"
 	CREATE_ISO_EXPECT = "create-iso.expect"
 
 	def __init__(self, config):
+		self.config = config
 		self.clonezilla_custom = ClonezillaIso(config, "custom")
 		self.clonezilla_regular = ClonezillaIso(config, "regular")
-		self.service_account_credentials = config.get("google", "service_account_credentials")
+		self.service_account_credentials = config.get(
+			"google", "service_account_credentials")
 		self.launch_expect = config.get("cziso", "launch_expect_template")
 		self.priv_interface = config.get("cziso", "private_iface")
 		self.temp_dir = config.get("cziso", "temp_directory")
 
-		self.clonezilla_vm_obj = None
 		self.logger = logging.getLogger(self.__module__)
-		self.unique_id = "%s-%d" % (time.strftime('%Y%m%d'), os.getpid())
-		self.clonezilla_vm_name = "%s-%s" % (
-			Clonezilla.CLONEZILLA_VM_PREFIX, self.unique_id)
-
-	def clean_clonezilla_vm(self):
-		"""
-		Shutdown and remove Clonezilla VM
-
-		:return: Returns if successful; otherwise aborts
-		"""
-		try:
-			self.clonezilla_vm_obj.destroy()
-		except:
-			self.logger.debug("VM already shutdown")
-		self.clonezilla_vm_obj.undefine()
 
 	def convert_to_clonezilla_iso(self, image, ip=None, netmask=None):
 		"""
@@ -73,19 +54,24 @@ class Clonezilla:
 		cziso.create_nfs_export(tmp, ip)
 
 		# launch Clonezilla
-		clonezilla_iso = self.clonezilla_custom
-		status = self.launch_clonezilla_vm(clonezilla_iso, vda=image.get_mount())
+		libvirt_file = cziso.virtualmachine.LibvirtFile(self.config.config_dir)
+		libvirt_file.add_disk(
+			"file", "cdrom", self.clonezilla_custom.get_or_download())
+		libvirt_file.add_disk("block", "disk", image.get_mount())
+		libvirt_file.set_interface(self.priv_interface)
+		vm = cziso.virtualmachine.VM()
+		status = vm.launch(libvirt_file.get_xml())
 		if status != 0:
 			cziso.abort("Unable to launch Clonezilla Live VM")
 
 		# run create iso script
-		vm_id = image.get_image_id()
-		expect_path = self.write_create_expect_script(ip, tmp, netmask, vm_id)
+		expect_path = self.write_create_expect_script(
+			libvirt_file.get_name(), ip, tmp, netmask, image.get_image_id())
 		self.logger.info("Running gen-rec-iso Clonezilla script")
 		subprocess.call("expect %s" % expect_path, shell=True)
 
 		# get ISO image
-		iso_file = "clonezilla-live-%s.iso" % vm_id
+		iso_file = "clonezilla-live-%s.iso" % image.get_image_id()
 		src_file = os.path.join(tmp, iso_file)
 		if os.path.exists(src_file):
 			dst_file = os.path.join(self.temp_dir, iso_file)
@@ -95,7 +81,7 @@ class Clonezilla:
 			self.logger.error("Clonezilla did not generate ISO file")
 
 		# cleanup
-		self.clean_clonezilla_vm()
+		vm.clean()
 		cziso.remove_nfs_export(tmp, ip)
 		shutil.rmtree(tmp)
 		image.unmount()
@@ -106,42 +92,31 @@ class Clonezilla:
 
 		:return: The path to the temporary sub directory.
 		"""
-		dir = os.path.join(
+		tmp_dir = os.path.join(
 			self.temp_dir, "clonezilla-temp-isodir-%s" % self.unique_id)
-		os.mkdir(dir)
-		return dir
+		os.mkdir(tmp_dir)
+		return tmp_dir
 
-	def get_vm_vnc_port(self):
+	def modify_image(self, image):
 		"""
-		Get the VNC port assigned to Clonezilla VM
+		Modify image using regular Clonezilla
 
-		:return:  A string containing the VNC port
+		:param image: An object of Image
+
+		:return:  Returns if successful; otherwise aborts
 		"""
-		# get the XML description of the VM
-		vm_xml = self.clonezilla_vm_obj.XMLDesc(0)
-		root = ET.fromstring(vm_xml)
-		# get the VNC port
-		graphics = root.find('./devices/graphics')
-		port = graphics.get('port')
-		return port
+		self.logger.info("Modifying image %s" % image)
+		if not image.mount():
+			cziso.abort("Unable to mount image %s" % image)
 
-	def launch_clonezilla_vm(self, clonezilla_iso, **kwargs):
-		"""
-		Launch Clonezilla Live VM with provided loop device as input image
-
-		:param loop_device:  Input image to convert
-
-		:return: Returns 0 on success; otherwise non-zero
-		"""
-		self.virConnect_obj = libvirt.open("qemu:///session")
-		xml = cziso.fill_template(
-			clonezilla_iso.get_libvirt_template(),
-			vm_name=self.clonezilla_vm_name,
-			clonezilla_iso=clonezilla_iso.get_or_download(),
-			ethX=self.priv_interface,
-			**kwargs)
-		self.clonezilla_vm_obj = self.virConnect_obj.defineXML(xml)
-		return self.clonezilla_vm_obj.create()
+		libvirt_file = cziso.virtualmachine.LibvirtFile(self.config.config_dir)
+		libvirt_file.add_disk("file", "cdrom", self.clonezilla_regular.get_or_download())
+		libvirt_file.add_disk("block", "disk", image.get_mount())
+		vm = cziso.virtualmachine.VM()
+		vm.launch(libvirt_file.get_xml())
+		vm.attach_vnc()
+		vm.clean()
+		image.unmount()
 
 	def resize_image(self, in_image, out_image):
 		"""
@@ -161,15 +136,18 @@ class Clonezilla:
 			cziso.abort("Unable to mount output image %s" % out_image)
 
 		# launch Clonezilla
-		status = self.launch_clonezilla_vm(self.clonezilla_regular,
-					vda=in_image.get_mount(), vdb=out_image.get_mount())
+		libvirt_file = cziso.virtualmachine.LibvirtFile(self.config.config_dir)
+		libvirt_file.add_disk("file", "cdrom", self.clonezilla_regular.get_or_download())
+		libvirt_file.add_disk("block", "disk", in_image.get_mount())
+		libvirt_file.add_disk("block", "disk", out_image.get_mount())
+		vm = cziso.virtualmachine.VM()
+		status = vm.launch(libvirt_file.get_xml())
 		if status != 0:
 			cziso.abort("Unable to launch Clonezilla Live VM")
-
-		subprocess.call("vncviewer localhost::%s" % self.get_vm_vnc_port(), shell=True)
+		vm.attach_vnc()
 
 		# cleanup
-		self.clean_clonezilla_vm()
+		vm.clean()
 		in_image.unmount()
 		out_image.unmount()
 
@@ -189,18 +167,39 @@ class Clonezilla:
 			cziso.abort("Unable to mount image %s" % image)
 
 		# launch Clonezilla
-		status = self.launch_clonezilla_vm(iso_file, image.get_mount())
+		libvirt_file = cziso.virtualmachine.LibvirtFile(self.config.config_dir)
+		libvirt_file.add_disk("file", "cdrom", iso_file)
+		libvirt_file.add_disk("block", "disk", image.get_mount())
+		vm = cziso.virtualmachine.VM()
+		status = vm.launch(libvirt_file.get_xml())
 		if status != 0:
 			cziso.abort("Unable to launch Clonezilla Live VM")
-		subprocess.call("vncviewer localhost::%s" % self.get_vm_vnc_port(), shell=True)
-		self.clean_clonezilla_vm()
+		vm.attach_vnc()
+		vm.clean()
+		image.unmount()
+
+	def test_image(self, image):
+		"""
+		Test image by starting up a VM
+
+		:param image: A string containing the image URI
+
+		:return:  Returns if successful; otherwise aborts
+		"""
+		self.logger.info("Testing image %s" % image)
+		if not image.mount():
+			cziso.abort("Unable to mount image %s" % image)
+
+		libvirt_file = cziso.virtualmachine.LibvirtFile(self.config.config_dir)
+		libvirt_file.add_disk("block", "disk", image.get_mount())
+		vm = cziso.virtualmachine.VM()
+		vm.launch(libvirt_file.get_xml())
+		vm.attach_vnc()
+		vm.clean()
 		image.unmount()
 
 	def upload(self, image):
 		self.logger.info("Uploading image %s to %s" % (image, "fill in later"))
-
-		self.get_or_download_clonezilla_live()
-
 	# mount
 	# credentials = ServiceAccountCredentials.from_json_keyfile_name(
 	#     self.service_credentials, Repository.SCOPE)
@@ -217,7 +216,7 @@ class Clonezilla:
 	#     for item in items:
 	#         print('{0} ({1})'.format(item['name'], item['id']))
 
-	def write_create_expect_script(self, ip, iso_temp_dir, netmask, vm_id):
+	def write_create_expect_script(self, vm_name, ip, iso_temp_dir, netmask, img_id):
 		"""
 		Fill in the correct parameters for expect script to drive automated
 		Clonezilla ISO generation and write to disk.
@@ -225,14 +224,14 @@ class Clonezilla:
 		:param ip:  A string containing the IP address for Clonezilla VM
 		:param iso_temp_dir:  Temporary directory to mount to /home/partimag
 		:param netmask:  A string containing the netmask for Clonezilla VM
-		:param vm_id:  The identifier to use for ISO name
+		:param img_id:  The identifier to use for ISO name
 
 		:return:  Path to expect script
 		"""
 		msg = cziso.fill_template(self.launch_expect,
-		                          vm_name=self.clonezilla_vm_name, ip=ip,
+		                          vm_name=vm_name, ip=ip,
 		                          netmask=netmask, temp_dir=iso_temp_dir,
-		                          vm_id=vm_id)
+		                          vm_id=img_id)
 		expect_path = os.path.join(iso_temp_dir, Clonezilla.CREATE_ISO_EXPECT)
 		self.logger.info("Writing expect template to %s" % expect_path)
 		f = open(expect_path, "w")
@@ -245,22 +244,21 @@ class ClonezillaIso:
 	""""
 	Convenience class for working with Clonezilla Live ISO
 	"""
-	def __init__(self, config, type):
+	def __init__(self, config, iso_type):
 		"""
 		Read in config info from file and create instance.
 
 		:param config:  A CzisoConfig object containing configuration
-		:param type:  A string containing the type of Clonezilla ISO as defined
+		:param iso_type:  A string containing the type of Clonezilla ISO as defined
 		in config file.
 		"""
 		self.logger = logging.getLogger(self.__module__)
-		self.type = type
-		section_name = "clonezilla_%s" % type
-		self.google_drive_id = config.get(section_name, "google_drive_id")
-		self.local_filename = config.get(section_name, "local_filename")
 		self.temp_dir = config.get("cziso", "temp_directory")
-		self.libvirt_template = config.get(
-			section_name, "clonezilla_libvirt_template")
+		self.type = iso_type
+		section_name = "clonezilla_%s" % iso_type
+		self.google_drive_id = config.get(section_name, "google_drive_id")
+		local_filename = config.get(section_name, "local_filename")
+		self.iso_path = os.path.join(self.temp_dir, local_filename)
 
 	def __str__(self):
 		"""
@@ -277,18 +275,9 @@ class ClonezillaIso:
 
 		:return:  Local path to Clonezilla Live VM
 		"""
-		local_path = os.path.join(self.temp_dir, self.local_filename)
-		if os.path.exists(local_path):
-			self.logger.info("Using clonezilla iso at %s" % local_path)
-			return local_path
+		if os.path.exists(self.iso_path):
+			self.logger.info("Using clonezilla iso at %s" % self.iso_path)
+			return self.iso_path
 		self.logger.info("No local %s clonezilla iso found" % self.type)
-		cziso.gdrive_download(self.google_drive_id, local_path)
-		return local_path
-
-	def get_libvirt_template(self):
-		"""
-		Get the libvirt template for launching this Clonezilla ISO
-
-		:return: A path to the Clonezilla libvirt XML template.
-		"""
-		return self.libvirt_template
+		cziso.gdrive_download(self.google_drive_id, self.iso_path)
+		return self.iso_path

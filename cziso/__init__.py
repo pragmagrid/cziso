@@ -1,6 +1,7 @@
 import ConfigParser
 import cookielib
 import logging
+import os
 import re
 import shlex
 import string
@@ -11,7 +12,7 @@ import urllib2
 
 logger = None
 
-__all__ = ["clonezilla", "image"]
+__all__ = ["clonezilla", "image", "virtualmachine"]
 
 
 def abort(error):
@@ -187,7 +188,7 @@ class CzisoConfig(ConfigParser.RawConfigParser):
 	"""
 	Convenience class for getting info from config file
 	"""
-	def __init__(self, **kwargs):
+	def __init__(self, config_dir, config_file, **kwargs):
 		"""
 		Create CzisoConfig object
 
@@ -196,6 +197,8 @@ class CzisoConfig(ConfigParser.RawConfigParser):
 		:return: new CzisoConfig object
 		"""
 		ConfigParser.RawConfigParser.__init__(self, kwargs)
+		self.config_dir = config_dir
+		self.config_file = os.path.join(config_dir, config_file)
 		self.logger = logging.getLogger(self.__module__)
 
 	def get_vars_by_regex(self, section, var_regex):
@@ -218,3 +221,11 @@ class CzisoConfig(ConfigParser.RawConfigParser):
 					name = match.group(1)
 				variables[name] = value
 		return variables
+
+	def load(self):
+		"""
+		Read in config file
+
+		:return: Returns True if successful, otherwise False
+		"""
+		return ConfigParser.RawConfigParser.read(self, self.config_file)

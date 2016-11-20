@@ -69,11 +69,22 @@ class Image:
 			if matcher:
 				if matcher.group(2) == "Linux":
 					partitions.append(matcher.group(1))
+		partitions = self.find_partitions(partitions)
 		for partition in partitions:
 			out, rc = cziso.run_command("fsck -y %s" % partition)
 			if rc != 0:
 				cziso.abort("Problem running fsck -y on partition")
 			self.logger.debug("fsck output: %s" % "\n".join(out))
+
+	def find_partitions(self, partitions):
+		"""
+		Find the provided image partitions on local host
+
+		:param partitions: A string array containing image partitions
+
+		:return: A string array containing location of image partitions
+		"""
+		return partitions
 
 	@abc.abstractmethod
 	def get_image_id(self):
@@ -168,6 +179,17 @@ class Raw(Image):
 		"""
 		return os.path.exists(self.file)
 
+	def find_partitions(self, partitions):
+		"""
+		Find the provided image partitions on local host
+
+		:param partitions: A string array containing image partitions
+
+		:return: A string array containing location of image partitions
+		"""
+		mapper = os.path.join("dev", "mapper")
+		return [p.replace("dev", mapper) for p in partitions]
+
 	def get_image_id(self):
 		"""
 		Get a string representing the ID of the image.  Used to name new
@@ -202,7 +224,7 @@ class Raw(Image):
 
 		:return: True if successful, otherwise False
 		"""
-		out, rc = cziso.run_command("losetup -f %s" % self.file)
+		out, rc = cziso.run_command("kpartx -a %s" % self.file)
 		if rc != 0:
 			self.logger.error("Unable to mount %s as a control loop device")
 			return False
@@ -225,7 +247,7 @@ class Raw(Image):
 
 		:return: True if successful; otherwise False
 		"""
-		out, rc = cziso.run_command("losetup -d %s" % self.loop_device)
+		out, rc = cziso.run_command("kpartx -d %s" % self.file)
 		if rc != 0:
 			self.logger.error(
 				"Unable to remove loop device %s" % self.loop_device)

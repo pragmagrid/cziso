@@ -1,7 +1,7 @@
 import cziso.commands
 import cziso.clonezilla
 import cziso.image
-from cziso.commands import CommonArgs, Arg, Opt
+from cziso.commands import CommonArgs, Arg, ImageArg, Opt
 
 
 class Command(cziso.commands.Command):
@@ -13,13 +13,7 @@ class Command(cziso.commands.Command):
 		automated.  Currently only RAW and ZFS volumes are supported.
 		""",
 		[
-			Arg("image",
-			    """URI of VM image to use as source for iso.  Possible URI
-		formats are:
-
-			zfs://nas_name/pool_name/vol_name
-			file:///path/to/file.[img,raw]
-			    """)
+			ImageArg("image")
 		],
 		[
 			Opt("net",

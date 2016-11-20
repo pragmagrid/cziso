@@ -49,6 +49,19 @@ class Arg:
 		""" % (self.name, self.description)
 
 
+class ImageArg(Arg):
+	def __init__(self, name):
+		Arg.__init__(
+			self, name,
+			"""URI of destination image.  If image does not already
+		exist, the image will be created if the option 'size' is specified.
+		Possible URI formats are:
+
+			zfs://nas_name/pool_name/vol_name
+			file:///path/to/file.[img,raw]
+			""")
+
+
 class Opt(Arg):
 	"""
 	Convenience class for handling optional command-line arguments

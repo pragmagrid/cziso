@@ -1,7 +1,7 @@
 import cziso.commands
 import cziso.clonezilla
 import cziso.image
-from cziso.commands import CommonArgs, Arg, Opt
+from cziso.commands import CommonArgs, Arg, ImageArg, Opt
 
 
 class Command(cziso.commands.Command):
@@ -11,13 +11,8 @@ class Command(cziso.commands.Command):
 		""",
 		[
 			Arg("iso", "Path to Clonezilla VM ISO"),
-			Arg("image", """URI of destination image.  If image does not already
-		exist, the image will be created if the option 'size' is specified.
-		Possible URI formats are:
+			ImageArg("image")
 
-			zfs://nas_name/pool_name/vol_name
-			file:///path/to/file.[img,raw]
-			""")
 		],
 		[
 			Opt("size", "Size of destination image (GB)", "")

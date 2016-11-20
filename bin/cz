@@ -9,8 +9,9 @@ script_base_dir = os.path.abspath(os.path.join(full_path, os.path.pardir))
 sys.path.insert(0, script_base_dir)
 import cziso
 
-config = cziso.CzisoConfig()
-config.read("etc/cziso.cfg")
+config_dir = os.path.join(script_base_dir, "etc")
+config = cziso.CzisoConfig(config_dir, "cziso.cfg")
+config.load()
 args = [""] if len(sys.argv) == 1 else sys.argv[1:]
 cmd_obj, cmd_args = cziso.get_command(args)
 if not cmd_obj:
