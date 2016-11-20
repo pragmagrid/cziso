@@ -86,6 +86,14 @@ class LibvirtFile:
 		self.iface_xml = ""
 
 	def add_disk(self, disk_type, device_type, disk):
+		"""
+		Add a disk to the libvirt file
+
+		:param disk_type: A string containing the type of disk (file, block)
+		:param device_type: A string containing the type of device (disk, cdrom)
+		:param disk: The path to the disk
+		:return:
+		"""
 		xml_type = "%s_%s" % (disk_type, device_type)
 		if xml_type in self.disk_ids:
 			self.disk_ids[xml_type] += 1
@@ -101,13 +109,28 @@ class LibvirtFile:
 		self.disk_xmls.append(cziso.fill_template(f, **values))
 
 	def get_name(self):
+		"""
+		Return the name of the VM instance
+
+		:return:  A string containing the name of the VM instance
+		"""
 		return self.name
 
 	def get_xml(self):
+		"""
+		Return the virt file XML
+
+		:return:  A string containing the libvirt file
+		"""
 		return cziso.fill_template(self.libvirt, vm_name = self.name,
 		    disks="\n".join(self.disk_xmls), interface=self.iface_xml)
 
 	def set_interface(self, iface):
+		"""
+		Add an interface to the libvirt file
+
+		:param iface: The local interface that you want this vM to be bridged to
+		"""
 		f = os.path.join(self.config_dir, "iface-%s" % LibvirtFile.TEMPLATE_FILE)
 		self.iface_xml = cziso.fill_template(f, iface=iface)
 
