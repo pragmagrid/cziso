@@ -40,3 +40,17 @@ To install cziso, do a git clone ::
     # cd cziso
     
 Next, edit the config file in etc/cziso.cfg and specify a location for **temp_directory** and set the **private_iface** field.  The latter is needed because we are using a Clonezilla Live VM to generate the restore ISO and so mount a temporary directory from the physical host to the VM to output the restore ISO.  Because the libvirt version we typically use does not support direct directory mounts from the physical host, we mount the directory using NFS and so need to configure a private interface on the Clonezilla Live VM instance.  The value of the **private_iface** field should be the private interface of your physical host (e.g., eth0 or eth1).
+
+Getting started
+---------------
+To see all cziso commands run ::
+
+    # cziso help
+    
+To view help information for a particular command, run ::
+
+    # cziso <command> help
+    
+E.g., ::
+
+    # cziso create help
