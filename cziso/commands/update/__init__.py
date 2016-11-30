@@ -13,6 +13,10 @@ class Command(cziso.commands.Command):
 		],
 		[
 			Opt(
+				"revision",
+				"Upload the ISOs as a revision of existing ISOs",
+				"false"),
+			 Opt(
 				"upload",
 				"Upload the customized and regular ISOs",
 				"false")
@@ -27,10 +31,11 @@ class Command(cziso.commands.Command):
 		arg_vals = self.parse_args(args)
 
 		cz = cziso.clonezilla.Clonezilla(config)
-		cz.update(arg_vals["zip"])
-		# gdrive = cziso.gdrive.GdriveAuth(config)
-		# gdrive.upload(
-		# 	arg_vals["file"],
-		# 	arg_vals["gdrive_folder"],
-		# 	self.is_arg_true(arg_vals["revision"]))
+		(regular_iso, custom_iso) = cz.update(arg_vals["zip"])
+		if self.is_arg_true(arg_vals["upload"]):
+			revision = self.is_arg_true(arg_vals["revision"])
+			import cziso.gdrive as googledrive
+			drive = googledrive.GdriveAuth(config)
+			drive.upload(regular_iso, revision=revision)
+			drive.upload(custom_iso, revision=revision)
 

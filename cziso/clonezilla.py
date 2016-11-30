@@ -202,8 +202,9 @@ class Clonezilla:
 		vm.clean()
 		image.unmount()
 
-	def update(self, zip_path):
+	def update(self, zip_path, out_dir=os.getcwd()):
 		self.logger.info("Generating custom ISO for %s" % zip_path)
+		cz_version = os.path.splitext(os.path.basename(zip_path))[0]
 
 		tmp = self.create_temp_directory()
 		self.logger.debug("Created temporary directory %s" % tmp)
@@ -215,8 +216,8 @@ class Clonezilla:
 			cziso.abort("Unable to unzip %s: %s" % (zip_path, "\n".join(out)))
 
 		# generate regular ISO
-		custom_iso = os.path.join(tmp, "clonezilla-live-regular.iso")
-		cziso.generate_iso(self.genisoimage_command, zip_dir, custom_iso)
+		regular_iso = os.path.join(out_dir, "%s-regular.iso" % cz_version)
+		cziso.generate_iso(self.genisoimage_command, zip_dir, regular_iso)
 
 		# customize file
 		isolinux_file = os.path.join(zip_dir, "syslinux", "isolinux.cfg")
@@ -226,12 +227,14 @@ class Clonezilla:
 		cziso.file_edit(isolinux_file, Clonezilla.CUSTOMIZATIONS)
 
 		# generate custom ISO
-		custom_iso = os.path.join(tmp, "clonezilla-live-custom.iso")
+		custom_iso = os.path.join(out_dir, "%s-custom.iso" % cz_version)
 		cziso.generate_iso(self.genisoimage_command, zip_dir, custom_iso)
 
 		# cleanup
 		self.logger.debug("Removing temporary directory %s" % tmp)
-		#shutil.rmtree(tmp)
+		shutil.rmtree(tmp)
+
+		return regular_iso, custom_iso
 
 	def write_create_expect_script(self, vm_name, ip, iso_temp_dir, netmask, img_id):
 		"""

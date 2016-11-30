@@ -12,6 +12,7 @@ class GdriveAuth:
 		self.service_account_credentials = config.get(
 			"google", "service_account_credentials")
 		self.chunk_size = int(config.get("google", "chunk_size"))
+		self.default_drive_dir_id = config.get("google", "default_drive_dir_id")
 
 		try:
 			import apiclient.discovery
@@ -133,7 +134,8 @@ https://developers.google.com/api-client-library/python/start/installation
 		except apiclient.errors.HttpError:
 			return None
 
-	def upload(self, file_path, folder_id, revision, description=None):
+	def upload(self, file_path,
+			folder_id=None, revision=False, description=None):
 		"""
 		Upload specified file to Google drive folder
 
@@ -152,6 +154,8 @@ https://developers.google.com/api-client-library/python/start/installation
 			cziso.abort("File %s does not exist" % file_path)
 		filename = os.path.basename(file_path)
 
+		if folder_id is None:
+			folder_id = self.default_drive_dir_id
 		if self.get_metadata(folder_id) is None:
 			cziso.abort("Google Drive folder %s does not exist" % folder_id)
 

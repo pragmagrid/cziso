@@ -135,6 +135,7 @@ def gdrive_download(google_id, lpath):
 
 
 def generate_iso(genisoimage_command, source_dir, iso_file):
+	current_dir = os.getcwd()
 	os.chdir(source_dir)
 	logger.info("Generating ISO %s" % iso_file)
 	out, rc = run_command("%s -o %s ." % (genisoimage_command, iso_file))
@@ -142,6 +143,7 @@ def generate_iso(genisoimage_command, source_dir, iso_file):
 		abort("Error generating ISO: %s" % ("\n".join(out)))
 	if not os.path.exists(iso_file):
 		abort("Can not find generated ISO file %s" % iso_file)
+	os.chdir(current_dir)
 
 
 def get_free_ip(iface):
