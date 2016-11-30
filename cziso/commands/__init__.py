@@ -285,7 +285,7 @@ class Command:
 			loglevel = self.__class__.usage.get_arg("loglevel")
 			cziso.config_logging(loglevel.get_default())
 		else:
-			cziso.config_logging("ERROR")
+			cziso.config_logging("INFO")
 
 		return arg_vals
 

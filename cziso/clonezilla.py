@@ -29,7 +29,7 @@ class Clonezilla:
 		self.logger = logging.getLogger(self.__module__)
 		self.unique_id = "%s-%d" % (time.strftime('%Y%m%d'), os.getpid())
 
-	def convert_to_clonezilla_iso(self, image, out_file, network):
+	def convert_to_clonezilla_iso(self, image, out_dir, network):
 		"""
 		Create a Clonezilla ISO file from specified image
 
@@ -41,6 +41,8 @@ class Clonezilla:
 		"""
 		if not image.exists():
 			cziso.abort("Image file %s does not exist" % image)
+		if out_dir is not None and not os.path.exists(out_dir):
+			cziso.abort("Output directory %s does not exist" % out_dir)
 		self.logger.info("Converting image %s to iso" % image)
 
 		# mount raw image and check it
@@ -50,8 +52,13 @@ class Clonezilla:
 
 		# mount temp directory to place iso when complete
 		tmp = self.create_temp_directory()
-		if ip is None and netmask is None:
+		ip, netmask = None, None
+		if network is None:
 			ip, netmask = cziso.get_free_ip(self.priv_interface)
+		else:
+			ip, netmask = network.split(":")
+		if netmask is None or ip is None:
+			cziso.abort("Unable to create a NFS export.  No ip or netmask")
 		cziso.create_nfs_export(tmp, ip)
 
 		# launch Clonezilla
@@ -75,11 +82,11 @@ class Clonezilla:
 		iso_file = "clonezilla-live-%s.iso" % image.get_image_id()
 		src_file = os.path.join(tmp, iso_file)
 		dst_file = os.path.join(self.temp_dir, iso_file)
-		if dst_file != "":
-			dst_file = out_file
+		if out_dir is not None:
+			dst_file = os.path.join(out_dir, iso_file)
 		if os.path.exists(src_file):
+			self.logger.info("Moving ISO file %s to %s" % (src_file, dst_file))
 			os.rename(src_file, dst_file)
-			self.logger.info("Moving ISO file to %s" % dst_file)
 		else:
 			self.logger.error("Clonezilla did not generate ISO file")
 
@@ -203,6 +210,17 @@ class Clonezilla:
 		image.unmount()
 
 	def update(self, zip_path, out_dir=os.getcwd()):
+		"""
+		Generate new Clonezilla Live ISOs for both the custom and regular
+		cases.
+
+		:param zip_path: A string containing the path to a Clonezilla zip
+		release
+		:param out_dir: A string containing a path to where the ISOs should
+		be written
+
+		:return: A tuple containing the path to the regular and custom ISOs
+		"""
 		self.logger.info("Generating custom ISO for %s" % zip_path)
 		cz_version = os.path.splitext(os.path.basename(zip_path))[0]
 
@@ -257,7 +275,7 @@ class Clonezilla:
 		f = open(expect_path, "w")
 		f.write(msg)
 		f.close()
-		self.logger.info(msg)
+		self.logger.debug(msg)
 		return expect_path
 
 class ClonezillaIso:

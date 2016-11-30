@@ -16,15 +16,17 @@ class Command(cziso.commands.Command):
 			ImageArg("image")
 		],
 		[
-			Opt("out",
-			    "Path to write ISO file to " +
-			    "(default is to write it to configured temp directory"),
-				""),
-			Opt("net",
+			Opt(
+				"out",
+				"""Path to directory where to write generated ISO file to.
+		(default is to write it to configured temp directory)""",
+				None),
+			Opt(
+				"net",
 			    """Temporary IP address and netmask to assign Clonezilla Live
-		VM.  Format is <ip>/<netmask>.  If blank uses
+		VM.  Format is <ip>:<netmask>.  If blank attempts to use
 		'rocks report nextip command'.  """,
-			    None)
+				None)
 		]
 	)
 
