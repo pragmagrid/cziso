@@ -29,6 +29,12 @@ After this command completes, **myvol** will now be ready for you to use.  To te
   
 This will launch a temporary VM instance using the new image via libvirt and use vncviewer command to launch a VNC window to your local machine.  When you close the window, the VM will be destroyed so this should only be used for temporary testing of the image.  
 
+Requirements
+---------------
+* libvirt (version 0.10.2 or later)
+* tigervnc
+* Python 2.6 or later
+
 Installation
 ---------------
 To install cziso, do a git clone ::
