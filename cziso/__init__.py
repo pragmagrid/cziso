@@ -12,7 +12,7 @@ import urllib2
 
 logger = None
 
-__all__ = ["clonezilla", "image", "virtualmachine"]
+__all__ = ["clonezilla", "gdrive", "image", "virtualmachine"]
 
 
 def abort(error):
@@ -65,6 +65,34 @@ def create_nfs_export(dir, ip):
 		abort("Unable to export temp directory to Clonezilla VM")
 
 
+def file_edit(file_path, substitutions):
+	"""
+	Edit specified file and make any substitutions in it if found.
+
+	:param file_path: A string containing the path of the file to edit
+	:param substitutions: A hash array where the key is the search string and
+	the value is the replacement string
+
+	:return: A new target_string with substitutions if matched
+	"""
+	old_f = open(file_path, "r")
+	if old_f is None:
+		abort("Unable to open file %s" % file_path)
+	new_file = "%s.new" % file_path
+	new_f = open(new_file, "w")
+	if old_f is None:
+		abort("Unable to open file %s for writing" % new_file)
+	for line in old_f:
+		for search_string, replace_string in substitutions.items():
+			found_index = line.find(search_string)
+			if found_index > 0:
+				line = line.replace(search_string, replace_string)
+		new_f.write(line)
+	old_f.close()
+	new_f.close()
+	os.rename(new_file, file_path)
+
+
 def fill_template(template_file, **kwargs):
 	""""
 	Read the template file from disk and substitute in the args
@@ -104,6 +132,16 @@ def gdrive_download(google_id, lpath):
 	with open(lpath, "wb") as f:
 		f.write(response.read())
 	return True
+
+
+def generate_iso(genisoimage_command, source_dir, iso_file):
+	os.chdir(source_dir)
+	logger.info("Generating ISO %s" % iso_file)
+	out, rc = run_command("%s -o %s ." % (genisoimage_command, iso_file))
+	if rc != 0:
+		abort("Error generating ISO: %s" % ("\n".join(out)))
+	if not os.path.exists(iso_file):
+		abort("Can not find generated ISO file %s" % iso_file)
 
 
 def get_free_ip(iface):

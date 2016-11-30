@@ -1,34 +1,35 @@
-#import apiclient.discovery
 import cziso
 import cziso.virtualmachine
 import logging
-#import httplib2
-#import json
 import os
-#from oauth2client.service_account import ServiceAccountCredentials
+import re
 import shutil
 import subprocess
 import time
-#import urllib2
 
 
 class Clonezilla:
-	SCOPE = "https://www.googleapis.com/auth/drive"
 	CREATE_ISO_EXPECT = "create-iso.expect"
+	CUSTOMIZATIONS = {
+		"locales= ": "locales=en_US.UTF-8 ",
+		"keyboard-layouts= ": "keyboard-layouts=us ",
+		"ocs_live_run=\"ocs-live-general\"": "ocs_live_run=\"bash\" ",
+		"ip= ": "console=ttyS0,115200n8 ip= "
+	}
 
 	def __init__(self, config):
 		self.config = config
 		self.clonezilla_custom = ClonezillaIso(config, "custom")
 		self.clonezilla_regular = ClonezillaIso(config, "regular")
-		self.service_account_credentials = config.get(
-			"google", "service_account_credentials")
 		self.launch_expect = config.get("cziso", "launch_expect_template")
 		self.priv_interface = config.get("cziso", "private_iface")
 		self.temp_dir = config.get("cziso", "temp_directory")
+		self.genisoimage_command = config.get("cziso", "genisoimage_command")
 
 		self.logger = logging.getLogger(self.__module__)
+		self.unique_id = "%s-%d" % (time.strftime('%Y%m%d'), os.getpid())
 
-	def convert_to_clonezilla_iso(self, image, ip=None, netmask=None):
+	def convert_to_clonezilla_iso(self, image, out_file, network):
 		"""
 		Create a Clonezilla ISO file from specified image
 
@@ -73,8 +74,10 @@ class Clonezilla:
 		# get ISO image
 		iso_file = "clonezilla-live-%s.iso" % image.get_image_id()
 		src_file = os.path.join(tmp, iso_file)
+		dst_file = os.path.join(self.temp_dir, iso_file)
+		if dst_file != "":
+			dst_file = out_file
 		if os.path.exists(src_file):
-			dst_file = os.path.join(self.temp_dir, iso_file)
 			os.rename(src_file, dst_file)
 			self.logger.info("Moving ISO file to %s" % dst_file)
 		else:
@@ -110,7 +113,8 @@ class Clonezilla:
 			cziso.abort("Unable to mount image %s" % image)
 
 		libvirt_file = cziso.virtualmachine.LibvirtFile(self.config.config_dir)
-		libvirt_file.add_disk("file", "cdrom", self.clonezilla_regular.get_or_download())
+		libvirt_file.add_disk("file", "cdrom",
+		                      self.clonezilla_regular.get_or_download())
 		libvirt_file.add_disk("block", "disk", image.get_mount())
 		vm = cziso.virtualmachine.VM()
 		vm.launch(libvirt_file.get_xml())
@@ -198,23 +202,36 @@ class Clonezilla:
 		vm.clean()
 		image.unmount()
 
-	def upload(self, image):
-		self.logger.info("Uploading image %s to %s" % (image, "fill in later"))
-	# mount
-	# credentials = ServiceAccountCredentials.from_json_keyfile_name(
-	#     self.service_credentials, Repository.SCOPE)
-	#
-	# http_auth = credentials.authorize(httplib2.Http())
-	# drive = apiclient.discovery.build('drive', 'v3', http=http_auth, cache_discovery=False)
-	#
-	# results = drive.files().list(q="name contains 'clonezilla'").execute()
-	# items = results.get('files', [])
-	# if not items:
-	#     print('No files found.')
-	# else:
-	#     print('Files:')
-	#     for item in items:
-	#         print('{0} ({1})'.format(item['name'], item['id']))
+	def update(self, zip_path):
+		self.logger.info("Generating custom ISO for %s" % zip_path)
+
+		tmp = self.create_temp_directory()
+		self.logger.debug("Created temporary directory %s" % tmp)
+
+		# unpack zip
+		zip_dir = os.path.join(tmp, "zip")
+		out, rc = cziso.run_command("unzip %s -d %s" % (zip_path, zip_dir))
+		if rc != 0:
+			cziso.abort("Unable to unzip %s: %s" % (zip_path, "\n".join(out)))
+
+		# generate regular ISO
+		custom_iso = os.path.join(tmp, "clonezilla-live-regular.iso")
+		cziso.generate_iso(self.genisoimage_command, zip_dir, custom_iso)
+
+		# customize file
+		isolinux_file = os.path.join(zip_dir, "syslinux", "isolinux.cfg")
+		if not os.path.exists(isolinux_file):
+			cziso.abort("Unable to find %s" % isolinux_file)
+		self.logger.info("Editing %s" % isolinux_file)
+		cziso.file_edit(isolinux_file, Clonezilla.CUSTOMIZATIONS)
+
+		# generate custom ISO
+		custom_iso = os.path.join(tmp, "clonezilla-live-custom.iso")
+		cziso.generate_iso(self.genisoimage_command, zip_dir, custom_iso)
+
+		# cleanup
+		self.logger.debug("Removing temporary directory %s" % tmp)
+		#shutil.rmtree(tmp)
 
 	def write_create_expect_script(self, vm_name, ip, iso_temp_dir, netmask, img_id):
 		"""
