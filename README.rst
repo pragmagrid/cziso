@@ -10,9 +10,6 @@ Cziso is a convenience tool for doing VM image conversion (e.g., a RAW image to 
 
 .. _Clonezilla: http://clonezilla.org
 
-Example
----------------
-
 Suppose you have a RAW VM image called **myimage.img** and you want to convert it to a ZFS volume.
 
 First you generate a special Clonezilla restore ISO image using the **create** command. ::
