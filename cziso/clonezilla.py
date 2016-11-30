@@ -107,7 +107,7 @@ class Clonezilla:
 		os.mkdir(tmp_dir)
 		return tmp_dir
 
-	def modify_image(self, image):
+	def modify_image(self, image, target_image):
 		"""
 		Modify image using regular Clonezilla
 
@@ -118,49 +118,21 @@ class Clonezilla:
 		self.logger.info("Modifying image %s" % image)
 		if not image.mount():
 			cziso.abort("Unable to mount image %s" % image)
+		if target_image is not None:
+			if not target_image.mount():
+				cziso.abort("Unable to mount target image" % target_image)
 
 		libvirt_file = cziso.virtualmachine.LibvirtFile(self.config.config_dir)
 		libvirt_file.add_disk("file", "cdrom",
 		                      self.clonezilla_regular.get_or_download())
 		libvirt_file.add_disk("block", "disk", image.get_mount())
+		if target_image is not None:
+			libvirt_file.add_disk("block", "disk", target_image.get_mount())
 		vm = cziso.virtualmachine.VM()
 		vm.launch(libvirt_file.get_xml())
 		vm.attach_vnc()
 		vm.clean()
 		image.unmount()
-
-	def resize_image(self, in_image, out_image):
-		"""
-		Resize a current VM image
-
-		:param in_image: input image to resize
-		:param out_image: output image to place resized image
-
-		:return:  Returns if successful; otherwise aborts
-		"""
-		self.logger.info("Resizing image %s to %s" % (in_image, out_image))
-
-		# mount images
-		if not in_image.mount():
-			cziso.abort("Unable to mount input image %s" % in_image)
-		if not out_image.mount():
-			cziso.abort("Unable to mount output image %s" % out_image)
-
-		# launch Clonezilla
-		libvirt_file = cziso.virtualmachine.LibvirtFile(self.config.config_dir)
-		libvirt_file.add_disk("file", "cdrom", self.clonezilla_regular.get_or_download())
-		libvirt_file.add_disk("block", "disk", in_image.get_mount())
-		libvirt_file.add_disk("block", "disk", out_image.get_mount())
-		vm = cziso.virtualmachine.VM()
-		status = vm.launch(libvirt_file.get_xml())
-		if status != 0:
-			cziso.abort("Unable to launch Clonezilla Live VM")
-		vm.attach_vnc()
-
-		# cleanup
-		vm.clean()
-		in_image.unmount()
-		out_image.unmount()
 
 	def restore_clonezilla_iso(self, iso_file, image):
 		"""

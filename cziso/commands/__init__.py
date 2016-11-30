@@ -50,16 +50,16 @@ class Arg:
 
 
 class ImageArg(Arg):
-	def __init__(self, name):
-		Arg.__init__(
-			self, name,
-			"""URI of destination image.  If image does not already
+	DESCRIPTION = """URI of destination image.  If image does not already
 		exist, the image will be created if the option 'size' is specified.
 		Possible URI formats are:
 
 			zfs://nas_name/pool_name/vol_name
 			file:///path/to/file.[img,raw]
-			""")
+			"""
+
+	def __init__(self, name):
+		Arg.__init__(self, name, ImageArg.DESCRIPTION)
 
 
 class Opt(Arg):
@@ -105,6 +105,10 @@ class Opt(Arg):
 		%s
 		""" % (self.name, self.default, self.description)
 
+
+class ImageOpt(Opt):
+	def __init__(self, name, default):
+		Opt.__init__(self, name, ImageArg.DESCRIPTION, default)
 
 class Args:
 	"""

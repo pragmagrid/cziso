@@ -1,7 +1,7 @@
 import cziso.commands
 import cziso.clonezilla
 import cziso.image
-from cziso.commands import CommonArgs, Arg, ImageArg, Opt
+from cziso.commands import CommonArgs, ImageArg, ImageOpt
 
 
 class Command(cziso.commands.Command):
@@ -13,6 +13,7 @@ class Command(cziso.commands.Command):
 			ImageArg("image")
 		],
 		[
+			ImageOpt("target-image", None)
 		]
 	)
 
@@ -24,7 +25,10 @@ class Command(cziso.commands.Command):
 		arg_vals = self.parse_args(args)
 
 		image = cziso.image.Image.factory(arg_vals["image"])
+		target_image = None
+		if arg_vals["target-image"] is not None:
+			target_image = cziso.image.Image.factory(arg_vals["target-image"])
 		if not image.exists():
 			cziso.abort("Image %s does not exists" % image)
 		cz = cziso.clonezilla.Clonezilla(config)
-		cz.modify_image(image)
+		cz.modify_image(image, target_image)
