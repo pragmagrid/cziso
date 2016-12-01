@@ -1,6 +1,7 @@
 from cziso.commands import CommonArgs, Arg, Opt
 import cziso.commands
 import cziso.clonezilla
+import os
 
 
 class Command(cziso.commands.Command):
@@ -38,4 +39,8 @@ class Command(cziso.commands.Command):
 			drive = googledrive.GdriveAuth(config)
 			drive.upload(regular_iso, revision=revision)
 			drive.upload(custom_iso, revision=revision)
+			self.logger.info("Removing cached custom and regular ISOs")
+			os.remove(cz.clonezilla_custom.get_or_download())
+			os.remove(cz.clonezilla_regular.get_or_download())
+
 
