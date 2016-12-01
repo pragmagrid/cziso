@@ -93,7 +93,7 @@ https://developers.google.com/api-client-library/python/start/installation
 			if status:
 				percent_progress = status.progress() * 100
 				uploaded_megabytes = total_megabytes * status.progress()
-				self.logger.debug(
+				self.logger.info(
 					"Uploaded %.1f of %.1f MB (%.1f%% complete)" % (
 						uploaded_megabytes, total_megabytes, percent_progress))
 		return response['id']
@@ -148,7 +148,6 @@ https://developers.google.com/api-client-library/python/start/installation
 
 		:return: A string containing the Google drive id for file
 		"""
-		self.logger.info("Uploading file %s to Gdrive %s" % (file_path, folder_id))
 
 		if not os.path.exists(file_path):
 			cziso.abort("File %s does not exist" % file_path)
@@ -158,6 +157,9 @@ https://developers.google.com/api-client-library/python/start/installation
 			folder_id = self.default_drive_dir_id
 		if self.get_metadata(folder_id) is None:
 			cziso.abort("Google Drive folder %s does not exist" % folder_id)
+
+		self.logger.info(
+			"Uploading file %s to Gdrive %s" % (file_path, folder_id))
 
 		existing_file = self.get_file(filename, folder_id)
 		if existing_file is not None and revision is False:
