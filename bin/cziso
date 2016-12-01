@@ -8,14 +8,21 @@ script_base_dir = os.path.abspath(os.path.join(full_path, os.path.pardir))
 
 sys.path.insert(0, script_base_dir)
 import cziso
+import cziso.commands
 
 config_dir = os.path.join(script_base_dir, "etc")
 config = cziso.CzisoConfig(config_dir, "cziso.cfg")
 config.load()
 args = [""] if len(sys.argv) == 1 else sys.argv[1:]
+if len(args) == 1 and args[0] == 'help':
+	cziso.commands.Command().print_usage()
+	sys.exit(0)
 cmd_obj, cmd_args = cziso.get_command(args)
 if not cmd_obj:
-	cziso.abort("Invalid cz command '%s'" % sys.argv[1])
+	cziso.config_logging("ERROR")
+	cziso.abort("""ERROR:
+	Invalid cziso command '%s'.  Run '%s help' to see list
+	available commands.""" % (sys.argv[1], sys.argv[0]))
 cmd_obj.run(config, cmd_args)
 
 sys.exit(0)
