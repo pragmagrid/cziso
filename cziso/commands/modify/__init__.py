@@ -1,3 +1,4 @@
+import cziso
 import cziso.commands
 import cziso.clonezilla
 import cziso.image
@@ -7,7 +8,11 @@ from cziso.commands import CommonArgs, ImageArg, ImageOpt
 class Command(cziso.commands.Command):
 	usage = CommonArgs(
 		"""
-		Resize an image using regular Clonezilla Live VM
+		Modify an image using regular Clonezilla Live VM.  Attaches specified
+		disks as vda and vdb (if target-image specified) and launches VNC
+		console to Clonezilla Live VM instance.  Will shutdown and destroy
+		VM once vncviewer window is closed.  Currently requires X
+		forwarding enabled in order to run vncviewer.
 		""",
 		[
 			ImageArg("image")
@@ -24,6 +29,7 @@ class Command(cziso.commands.Command):
 	def run(self, config, args):
 		arg_vals = self.parse_args(args)
 
+		cziso.abort_if_no_x()
 		image = cziso.image.Image.factory(arg_vals["image"])
 		target_image = None
 		if arg_vals["target-image"] is not None:

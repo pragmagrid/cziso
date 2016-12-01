@@ -27,6 +27,16 @@ def abort(error):
 	sys.exit(1)
 
 
+def abort_if_no_x():
+	"""
+	Check to see if X forwarding is enabled and fail if not
+	"""
+	# check for external display so we can launch vncviewer
+	if "DISPLAY" not in os.environ:
+		abort(""""ERROR:
+	Must have external display to launch vncviewer.  Please SSH
+	in with -Y to forward X display""")
+
 def config_logging(loglevel="INFO", logfile=None):
 	"""
 	Configure the logger for calling program.  If logfile is None, messages

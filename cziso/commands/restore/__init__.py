@@ -7,7 +7,8 @@ from cziso.commands import CommonArgs, Arg, ImageArg, Opt
 class Command(cziso.commands.Command):
 	usage = CommonArgs(
 		"""
-		Restore a Clonezilla VM ISO to image
+		Restore a Clonezilla VM ISO to image.  Currently requires X forwarding
+		enabled in order to run vncviewer.
 		""",
 		[
 			Arg("iso", "Path to Clonezilla VM ISO"),
@@ -26,6 +27,7 @@ class Command(cziso.commands.Command):
 	def run(self, config, args):
 		arg_vals = self.parse_args(args)
 
+		cziso.abort_if_no_x()
 		out_image = cziso.image.Image.factory(arg_vals["image"])
 		if not out_image.exists():
 			if arg_vals["size"] == "":
