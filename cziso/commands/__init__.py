@@ -228,7 +228,7 @@ class CommonArgs(Args):
 		opts.append(Opt(
 			"loglevel",
 			"Print out log messages from specified level",
-			"ERROR"
+			"INFO"
 		))
 		Args.__init__(self, description, args, opts)
 
