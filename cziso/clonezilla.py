@@ -2,7 +2,6 @@ import cziso
 import cziso.virtualmachine
 import logging
 import os
-import re
 import shutil
 import subprocess
 import time
@@ -14,7 +13,8 @@ class Clonezilla:
 		"locales= ": "locales=en_US.UTF-8 ",
 		"keyboard-layouts= ": "keyboard-layouts=us ",
 		"ocs_live_run=\"ocs-live-general\"": "ocs_live_run=\"bash\" ",
-		"ip= ": "console=ttyS0,115200n8 ip= "
+		"ip= ": "console=ttyS0,115200n8 ip= ",
+		"timeout 300": "timeout 1"
 	}
 
 	def __init__(self, config):
@@ -75,7 +75,8 @@ class Clonezilla:
 		# run create iso script
 		expect_path = self.write_create_expect_script(
 			libvirt_file.get_name(), ip, tmp, netmask, image.get_image_id())
-		self.logger.info("Running gen-rec-iso Clonezilla script")
+		self.logger.info(
+			"Running gen-rec-iso script -- this will take several mins")
 		subprocess.call("expect %s" % expect_path, shell=True)
 
 		# get ISO image
@@ -160,6 +161,7 @@ class Clonezilla:
 		vm.attach_vnc()
 		vm.clean()
 		image.unmount()
+		self.logger.info("Restored image %s is now ready" % image)
 
 	def test_image(self, image):
 		"""
