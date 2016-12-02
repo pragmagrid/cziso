@@ -22,7 +22,7 @@ send "rm -f /home/partimag/file\n"
 expect "\n"
 
 set timeout 86400
-send "/usr/share/drbl/samples/gen-rec-iso -p vda -b -br -s vda $vm_id\n"
+send "/usr/share/drbl/samples/gen-rec-iso -nogui -p vda -b -br -s vda $vm_id\n"
 expect {           
     "Partclone fail" {
         send "\r"
