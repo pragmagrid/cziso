@@ -76,7 +76,8 @@ class Clonezilla:
 		expect_path = self.write_create_expect_script(
 			libvirt_file.get_name(), ip, tmp, netmask, image.get_image_id())
 		self.logger.info(
-			"Running gen-rec-iso script -- this will take several mins")
+			""""Running expect script to execute gen-rec-iso script -- it may
+take a few mins before you see any output""")
 		subprocess.call("expect %s" % expect_path, shell=True)
 
 		# get ISO image

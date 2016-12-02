@@ -26,11 +26,31 @@ class VM:
 
 		:return: Returns if successful; otherwise aborts
 		"""
-		try:
-			self.clonezilla_vm_obj.destroy()
-		except:
-			self.logger.debug("VM already shutdown")
+		self.logger.debug("Cleaning up VM instance %s" % self.get_name())
+		dom0 = self.virConnect_obj.lookupByName(self.get_name())
+		if dom0 is None:
+			self.logger.debug("VM already destroyed")
+			return True
+		status = dom0.info()[0]
+		if status == libvirt.VIR_DOMAIN_RUNNING:
+			try:
+				self.clonezilla_vm_obj.destroy()
+			except Exception as e:
+				self.logger.debug("Trouble shutting down VM: %s" % str(e))
+				return False
+		else:
+			self.logger.debug("VM instance already shutdown")
 		self.clonezilla_vm_obj.undefine()
+		return True
+
+	def get_name(self):
+		"""
+		Get the name of the VM instance
+
+		:return: A string containing the name of the VM instance
+		"""
+		root = self.get_xml()
+		return root.find("name").text
 
 	def get_vnc_port(self):
 		"""
@@ -38,13 +58,22 @@ class VM:
 
 		:return:  A string containing the VNC port
 		"""
-		# get the XML description of the VM
-		vm_xml = self.clonezilla_vm_obj.XMLDesc(0)
-		root = ET.fromstring(vm_xml)
+		root = self.get_xml()
 		# get the VNC port
 		graphics = root.find('./devices/graphics')
 		port = graphics.get('port')
 		return port
+
+	def get_xml(self):
+		"""
+		Get the XML from VM instance
+
+		:return:  An ElementTree object
+		"""
+		# get the XML description of the VM
+		vm_xml = self.clonezilla_vm_obj.XMLDesc(0)
+		root = ET.fromstring(vm_xml)
+		return root
 
 	def launch(self, libvirt_xml, **kwargs):
 		"""
