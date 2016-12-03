@@ -103,14 +103,17 @@ def file_edit(file_path, substitutions):
 	os.rename(new_file, file_path)
 
 
-def fill_template(template_file, **kwargs):
+def fill_template(template_file, tmp_dir=None, **kwargs):
 	""""
 	Read the template file from disk and substitute in the args
 
 	:param template_file The path to the template file
+	:param tmp_dir Write output to tmp_dir if specified and return path to file;
+	else return substituted template as a string.
 	:param kwargs Arbitrary number of substitute values to the the template file
 
-	:return A string containing the filled in template file
+	:return A string containing the filled in template file or path to template
+	file if tmp_dir is not None
 	"""
 	f = open(template_file, "r")
 	if not f:
@@ -118,7 +121,18 @@ def fill_template(template_file, **kwargs):
 	template = string.Template(f.read())
 	xml = template.substitute(kwargs)
 	logger.debug("%s:\n%s" % (template_file, xml))
-	return xml
+	logger.debug(xml)
+
+	if tmp_dir is None:
+		return xml
+
+	template_basename = os.path.basename(template_file)
+	expect_path = os.path.join(tmp_dir, template_basename)
+	logger.info("Writing expect template to %s" % expect_path)
+	f = open(expect_path, "w")
+	f.write(xml)
+	f.close()
+	return expect_path
 
 
 def gdrive_download(google_id, lpath):
@@ -227,8 +241,9 @@ def run_command(cmdline, input_string=None):
 	if isinstance(cmdline, str):
 		# needs to make a list
 		cmdline = shlex.split(cmdline)
-	p = subprocess.Popen(cmdline, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-							stderr=subprocess.STDOUT)
+	p = subprocess.Popen(
+		cmdline, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+		stderr=subprocess.STDOUT)
 	grep_stdout = p.communicate(input=input_string)[0]
 	p.wait()
 	return grep_stdout.split('\n'), p.returncode

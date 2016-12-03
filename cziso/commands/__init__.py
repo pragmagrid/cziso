@@ -110,6 +110,7 @@ class ImageOpt(Opt):
 	def __init__(self, name, default):
 		Opt.__init__(self, name, ImageArg.DESCRIPTION, default)
 
+
 class Args:
 	"""
 	Convenience class for handling required and optional command-line args

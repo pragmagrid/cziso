@@ -1,0 +1,13 @@
+#!/usr/bin/expect
+
+#exp_internal 1
+set timeout 600
+
+spawn /usr/bin/virsh console $vm_name
+
+expect "Connected to domain $vm_name"
+expect "Escape character is ^]"
+
+expect "press ENTER to continue:"
+send "\n"
+expect eof

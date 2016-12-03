@@ -21,7 +21,8 @@ class Clonezilla:
 		self.config = config
 		self.clonezilla_custom = ClonezillaIso(config, "custom")
 		self.clonezilla_regular = ClonezillaIso(config, "regular")
-		self.launch_expect = config.get("cziso", "launch_expect_template")
+		self.create_expect = config.get("cziso", "create_expect_template")
+		self.restore_expect = config.get("cziso", "restore_expect_template")
 		self.priv_interface = config.get("cziso", "private_iface")
 		self.temp_dir = config.get("cziso", "temp_directory")
 		self.genisoimage_command = config.get("cziso", "genisoimage_command")
@@ -73,11 +74,13 @@ class Clonezilla:
 			cziso.abort("Unable to launch Clonezilla Live VM")
 
 		# run create iso script
-		expect_path = self.write_create_expect_script(
-			libvirt_file.get_name(), ip, tmp, netmask, image.get_image_id())
+		expect_path = cziso.fill_template(
+			self.create_expect, tmp_dir=tmp, temp_dir=tmp,
+			vm_name=libvirt_file.get_name(), ip=ip, netmask=netmask,
+			vm_id=image.get_image_id())
 		self.logger.info(
-			""""Running expect script to execute gen-rec-iso script -- it may
-take a few mins before you see any output""")
+			"""Running expect script to execute gen-rec-iso script -- it may
+take a few mins to boot the Clonezilla Live VM before you see any output""")
 		subprocess.call("expect %s" % expect_path, shell=True)
 
 		# get ISO image
@@ -87,8 +90,10 @@ take a few mins before you see any output""")
 		if out_dir is not None:
 			dst_file = os.path.join(out_dir, iso_file)
 		if os.path.exists(src_file):
-			self.logger.info("Moving ISO file %s to %s" % (src_file, dst_file))
+			self.logger.debug("Moving ISO file %s to %s" % (src_file, dst_file))
 			os.rename(src_file, dst_file)
+			self.logger.info(
+				"Clonezilla restore ISO file is now ready at %s" % dst_file)
 		else:
 			self.logger.error("Clonezilla did not generate ISO file")
 
@@ -159,9 +164,19 @@ take a few mins before you see any output""")
 		status = vm.launch(libvirt_file.get_xml())
 		if status != 0:
 			cziso.abort("Unable to launch Clonezilla Live VM")
-		vm.attach_vnc()
+
+		# run restore iso script
+		expect_path = cziso.fill_template(
+			self.restore_expect, tmp_dir=self.temp_dir,
+			vm_name=libvirt_file.get_name())
+		self.logger.info("""Running restore expect script -- it may take a few
+mins to boot the Clonezilla Live VM before you see any output""")
+		subprocess.call("expect %s" % expect_path, shell=True)
+
+		# cleanup
 		vm.clean()
 		image.unmount()
+		os.remove(expect_path)
 		self.logger.info("Restored image %s is now ready" % image)
 
 	def test_image(self, image):
@@ -229,29 +244,6 @@ take a few mins before you see any output""")
 
 		return regular_iso, custom_iso
 
-	def write_create_expect_script(self, vm_name, ip, iso_temp_dir, netmask, img_id):
-		"""
-		Fill in the correct parameters for expect script to drive automated
-		Clonezilla ISO generation and write to disk.
-
-		:param ip:  A string containing the IP address for Clonezilla VM
-		:param iso_temp_dir:  Temporary directory to mount to /home/partimag
-		:param netmask:  A string containing the netmask for Clonezilla VM
-		:param img_id:  The identifier to use for ISO name
-
-		:return:  Path to expect script
-		"""
-		msg = cziso.fill_template(self.launch_expect,
-		                          vm_name=vm_name, ip=ip,
-		                          netmask=netmask, temp_dir=iso_temp_dir,
-		                          vm_id=img_id)
-		expect_path = os.path.join(iso_temp_dir, Clonezilla.CREATE_ISO_EXPECT)
-		self.logger.info("Writing expect template to %s" % expect_path)
-		f = open(expect_path, "w")
-		f.write(msg)
-		f.close()
-		self.logger.debug(msg)
-		return expect_path
 
 class ClonezillaIso:
 	""""
@@ -289,7 +281,7 @@ class ClonezillaIso:
 		:return:  Local path to Clonezilla Live VM
 		"""
 		if os.path.exists(self.iso_path):
-			self.logger.info("Using clonezilla iso at %s" % self.iso_path)
+			self.logger.debug("Using clonezilla iso at %s" % self.iso_path)
 			return self.iso_path
 		self.logger.info("No local %s clonezilla iso found" % self.type)
 		cziso.gdrive_download(self.google_drive_id, self.iso_path)
