@@ -18,8 +18,12 @@ class GdriveAuth:
 			import apiclient.discovery
 			from oauth2client.service_account import ServiceAccountCredentials
 
+			creds = self.service_account_credentials
+			if not os.path.isabs(creds):
+				creds = os.path.join(config.config_dir, creds)
+				self.logger.debug("Reading credentials from %s" % creds)
 			self.credentials = ServiceAccountCredentials.from_json_keyfile_name(
-				self.service_account_credentials, GdriveAuth.SCOPE)
+				creds, GdriveAuth.SCOPE)
 
 			http_auth = self.credentials.authorize(httplib2.Http())
 			self.drive = apiclient.discovery.build('drive', 'v3', http=http_auth,
