@@ -14,10 +14,6 @@ class Command(cziso.commands.Command):
 		],
 		[
 			Opt(
-				"revision",
-				"Upload the ISOs as a revision of existing ISOs",
-				"false"),
-			 Opt(
 				"upload",
 				"Upload the customized and regular ISOs",
 				"false")
@@ -34,13 +30,21 @@ class Command(cziso.commands.Command):
 		cz = cziso.clonezilla.Clonezilla(config)
 		(regular_iso, custom_iso) = cz.update(arg_vals["zip"])
 		if self.is_arg_true(arg_vals["upload"]):
-			revision = self.is_arg_true(arg_vals["revision"])
+			description = \
+				"Based on Clonezilla Live VM %s and generated on %s." % (
+					os.path.basename(arg_vals["zip"]),
+					cziso.get_current_time_string()
+				)
 			import cziso.gdrive as googledrive
 			drive = googledrive.GdriveAuth(config)
-			drive.upload(regular_iso, revision=revision)
-			drive.upload(custom_iso, revision=revision)
-			self.logger.info("Removing cached custom and regular ISOs")
-			os.remove(cz.clonezilla_custom.get_or_download())
-			os.remove(cz.clonezilla_regular.get_or_download())
+			drive.upload(regular_iso, description=description, revision=True,
+				filename=cz.clonezilla_regular.filename)
+			drive.upload(custom_iso, description=description, revision=True,
+			    filename=cz.clonezilla_custom.filename)
+			for iso in (
+				cz.clonezilla_custom.iso_path, cz.clonezilla_regular.iso_path):
+				if os.path.exists(iso):
+					self.logger.info("Removing cached iso %s" % iso)
+					os.remove(iso)
 
 

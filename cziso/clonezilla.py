@@ -261,9 +261,11 @@ class ClonezillaIso:
 		self.temp_dir = config.get("cziso", "temp_directory")
 		self.type = iso_type
 		section_name = "clonezilla_%s" % iso_type
-		self.google_drive_id = config.get(section_name, "google_drive_id")
-		local_filename = config.get(section_name, "local_filename")
-		self.iso_path = os.path.join(self.temp_dir, local_filename)
+		self.gdrive_id = config.get(section_name, "google_drive_id")
+		self.filename = config.get(section_name, "filename")
+		self.iso_path = os.path.join(self.temp_dir, self.filename)
+		self.max_cache_age_days = int(config.get(section_name, "max_cache_age"))
+		self.max_cache_age_secs = self.max_cache_age_days * 60 * 60 * 24
 
 	def __str__(self):
 		"""
@@ -280,9 +282,17 @@ class ClonezillaIso:
 
 		:return:  Local path to Clonezilla Live VM
 		"""
-		if os.path.exists(self.iso_path):
-			self.logger.debug("Using clonezilla iso at %s" % self.iso_path)
+		if not os.path.exists(self.iso_path):
+			self.logger.info("No local %s clonezilla iso found" % self.type)
+			cziso.gdrive_download(self.gdrive_id, self.iso_path)
 			return self.iso_path
-		self.logger.info("No local %s clonezilla iso found" % self.type)
-		cziso.gdrive_download(self.google_drive_id, self.iso_path)
+
+		# check to see if we need to download a fresh copy
+		local_age = time.time() - os.path.getmtime(self.iso_path)
+		if local_age > self.max_cache_age_secs:
+			self.logger.info("Local %s found is older than %i days" % (
+				self.iso_path, self.max_cache_age_days))
+			cziso.gdrive_download(self.gdrive_id, self.iso_path)
+
+		self.logger.debug("Using clonezilla iso at %s" % self.iso_path)
 		return self.iso_path

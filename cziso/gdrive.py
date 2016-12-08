@@ -12,7 +12,7 @@ class GdriveAuth:
 		self.service_account_credentials = config.get(
 			"google", "service_account_credentials")
 		self.chunk_size = int(config.get("google", "chunk_size"))
-		self.default_drive_dir_id = config.get("google", "default_drive_dir_id")
+		self.default_drive_dir_id = config.get("google", "default_drive_id")
 
 		try:
 			import apiclient.discovery
@@ -37,8 +37,8 @@ https://developers.google.com/api-client-library/python/start/installation
 
 		self.logger.debug("Successfully imported Google API")
 
-	def _request_create_or_update(
-			self, existing_file, file_path, folder_id, description=None):
+	def _request_create_or_update(self, existing_file, file_path, folder_id,
+	                              filename, description=None):
 		"""
 		Private function to start a HTTP request as either a create or update
 		to file if file already exists
@@ -49,12 +49,12 @@ https://developers.google.com/api-client-library/python/start/installation
 		:param file_path: A string containing the path of the file to upload
 		:param folder_id:  A string containing the Google drive folder id to
 		upload file to
-		:param description:  A description for the Google drive file
+		:param filename: A string containing the Google drive filename
+		:param description:  An optional description for the Google drive file
 
 		:return:
 		"""
 
-		filename = os.path.basename(file_path)
 		file_metadata = {
 			'name': filename,
 			'mimeType': 'application/octetstream'}
@@ -135,11 +135,13 @@ https://developers.google.com/api-client-library/python/start/installation
 			return None
 
 	def upload(self, file_path,
-			folder_id=None, revision=False, description=None):
+			filename=None, folder_id=None, revision=False, description=None):
 		"""
 		Upload specified file to Google drive folder
 
 		:param file_path: A string containing the path to the file to upload
+		:param filename: A string containing a different name of the file on
+		Google drive (default: filename of uploading file)
 		:param folder_id: The Google drive id for the folder to upload to
 		:param revision: A boolean value that is True if the file being uploaded
 		already exists in Google drive and this is a new revision of file;
@@ -151,7 +153,8 @@ https://developers.google.com/api-client-library/python/start/installation
 
 		if not os.path.exists(file_path):
 			cziso.abort("File %s does not exist" % file_path)
-		filename = os.path.basename(file_path)
+		if filename is None:
+			filename = os.path.basename(file_path)
 
 		if folder_id is None:
 			folder_id = self.default_drive_dir_id
@@ -169,7 +172,7 @@ https://developers.google.com/api-client-library/python/start/installation
 			))
 
 		request, media = self._request_create_or_update(
-			existing_file, file_path, folder_id, description)
+			existing_file, file_path, folder_id, filename, description)
 		id = self._upload_file(request, media)
 		self.logger.info("Upload Complete!")
 		self.logger.info(

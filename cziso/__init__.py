@@ -1,5 +1,6 @@
 import ConfigParser
 import cookielib
+import datetime
 import logging
 import os
 import re
@@ -36,6 +37,7 @@ def abort_if_no_x():
 		abort(""""ERROR:
 	Must have external display to launch vncviewer.  Please SSH
 	in with -Y to forward X display""")
+
 
 def config_logging(loglevel="INFO", logfile=None):
 	"""
@@ -136,6 +138,15 @@ def fill_template(template_file, tmp_dir=None, **kwargs):
 
 
 def gdrive_download(google_id, lpath):
+	"""
+	Download a file from Google drive using cookie trick from Phil
+
+	:param google_id: A string containing the Google drive id for the file you
+	want to download
+	:param lpath:  A string containing the local path you want to download the
+	file to
+	:return: True if successful
+	"""
 	url = "https://docs.google.com/uc?id=%s&export=download" % google_id
 
 	# get cookie and confirm code
@@ -146,6 +157,8 @@ def gdrive_download(google_id, lpath):
 	response = opener.open(url)
 	response_str = response.read()
 	matcher = re.search("confirm=(\w+)", response_str)
+	if matcher is None:
+		abort("Unable to find confirm code in %s" % response_str)
 	confirm_code = matcher.group(1)
 
 	# download to file
@@ -159,6 +172,14 @@ def gdrive_download(google_id, lpath):
 
 
 def generate_iso(genisoimage_command, source_dir, iso_file):
+	"""
+	Generate an ISO image from a source directory.
+
+	:param genisoimage_command: A string containing the genisocommand and opts
+	:param source_dir: A string containing the ISO source directory
+	:param iso_file: A string containing the path of the generated ISO file
+	:return:
+	"""
 	current_dir = os.getcwd()
 	os.chdir(source_dir)
 	logger.info("Generating ISO %s" % iso_file)
@@ -170,7 +191,35 @@ def generate_iso(genisoimage_command, source_dir, iso_file):
 	os.chdir(current_dir)
 
 
+def get_current_time_string():
+	"""
+	Get the current time formatted nicely as a string in UTC
+
+	:return:  A string representing the current date/time.
+	"""
+	class UTC(datetime.tzinfo):
+		def utcoffset(self, dt):
+			return datetime.timedelta(0)
+
+		def tzname(self, dt):
+			return "UTC"
+
+		def dst(self, dt):
+			return datetime.timedelta(0)
+
+	utc = UTC()
+	now = datetime.datetime.now(utc)
+	return str(now)
+
+
 def get_free_ip(iface):
+	"""
+	Find a free unused IP address using Rocks commands.
+
+	:param iface: The interface to find the IP address for
+
+	:return: A tuple containing the free ip and netmask.
+	"""
 	free_ip = None
 	out, rc = run_command("rocks report nextip private")
 	if rc != 0 and len(out) > 0:
