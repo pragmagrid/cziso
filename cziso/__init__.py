@@ -34,7 +34,7 @@ def abort_if_no_x():
 	"""
 	# check for external display so we can launch vncviewer
 	if "DISPLAY" not in os.environ:
-		abort(""""ERROR:
+		abort("""ERROR:
 	Must have external display to launch vncviewer.  Please SSH
 	in with -Y to forward X display""")
 
@@ -260,6 +260,26 @@ def get_command(args):
 	return None, None
 
 
+def increment_filename(filename):
+	"""
+	Given a filename check to see if it exists.  If so, append .1 so that we
+	do not override the file.  If .1 file exists keep appending .1 until the
+	file is not found.
+
+	:param filename: A string containing a filename or path
+
+	:return: An incremented filename that does not exist
+	"""
+	if not os.path.exists(filename):
+		return filename
+	i = 1
+	while True:
+		candidate_filename = "%s.%i" % (filename, i)
+		if not os.path.exists(candidate_filename):
+			return candidate_filename
+		i += 1
+
+
 def remove_nfs_export(dir, ip):
 	"""
 	Un-export NFS directory.  Returns if successful; otherwise aborts.
@@ -314,6 +334,22 @@ class CzisoConfig(ConfigParser.RawConfigParser):
 		self.config_dir = config_dir
 		self.config_file = os.path.join(config_dir, config_file)
 		self.logger = logging.getLogger(self.__module__)
+
+	def get_path(self, section, var):
+		"""
+		Get a path from the config file.  If relative, it is assumed to be
+		relative to the config dir etc
+
+		:param section:  The section header to read variables from.
+		:param var: A string containing the variable to read from section
+
+		:return: A string containing the path to a file
+		"""
+		path = self.get(section, var)
+		if not os.path.isabs(path):
+			path = os.path.join(self.config_dir, path)
+			self.logger.debug("Path for %s resolved to %s" % (var, path))
+		return path
 
 	def get_vars_by_regex(self, section, var_regex):
 		"""
