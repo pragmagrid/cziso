@@ -9,7 +9,7 @@ class GdriveAuth:
 
 	def __init__(self, config):
 		self.logger = logging.getLogger(self.__module__)
-		self.service_account_credentials = config.get(
+		self.service_account_credentials = config.get_path(
 			"google", "service_account_credentials")
 		self.chunk_size = int(config.get("google", "chunk_size"))
 		self.default_drive_dir_id = config.get("google", "default_drive_id")
@@ -18,12 +18,8 @@ class GdriveAuth:
 			import apiclient.discovery
 			from oauth2client.service_account import ServiceAccountCredentials
 
-			creds = self.service_account_credentials
-			if not os.path.isabs(creds):
-				creds = os.path.join(config.config_dir, creds)
-				self.logger.debug("Reading credentials from %s" % creds)
 			self.credentials = ServiceAccountCredentials.from_json_keyfile_name(
-				creds, GdriveAuth.SCOPE)
+				self.service_account_credentials, GdriveAuth.SCOPE)
 
 			http_auth = self.credentials.authorize(httplib2.Http())
 			self.drive = apiclient.discovery.build('drive', 'v3', http=http_auth,
