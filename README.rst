@@ -93,6 +93,15 @@ After this, you should be able to use the **cziso upload** command to upload, fo
 
     # cziso upload clonezilla-live-myimage.50G.iso 0B3cw74KWQ3fXcmd3RHBCTV9KaUU
     
- To see more upload options, type ::
+To see more upload options, type ::
  
     # cziso upload help
+    
+Updating Clonezilla (for the cziso maintainer only)
+---------------
+
+The following is an advanced feature just for us cziso developers/maintainers.  This tool uses customized and regular Clonezilla Live VM ISO files that are stored in Google drive.  If there is a new version of Clonezilla Live and we want to update our ISO files, download the new Clonezilla zip file.  Then run the **cziso update** command as follows ::
+
+     # cziso update clonezilla-live-2.5.0-9-amd64.zip upload=true 
+     
+This will generate to customized and regular ISO images and the **upload** option will also automatically upload them to the configured Google drive folder as updates to the existing files in Google drive.
