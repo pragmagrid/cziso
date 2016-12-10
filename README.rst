@@ -10,16 +10,16 @@ Cziso is a convenience tool for doing VM image conversion (e.g., a RAW image to 
 
 .. _Clonezilla: http://clonezilla.org
 
-Suppose you have a RAW VM image called **myimage.img** and you want to convert it to a ZFS volume.
+Suppose you have a RAW VM image called **myimage.img** that is 50 GB in size and you want to convert it to a ZFS volume.
 
 First you generate a special Clonezilla restore ISO image using the **create** command. ::
 
     # cziso create file:///path/to/myimage.img
   
-This will launch a customized Clonezilla Live VM instance to generate a restore ISO image called **clonezilla-live-myimage.iso**.  You can then use that ISO to restore it to a new ZFS volume called **myvol**. ::
+This will launch a customized Clonezilla Live VM instance to generate a restore ISO image called **clonezilla-live-myimage.50G.iso**.  You can then use that ISO to restore it to a new ZFS volume called **myvol**. ::
 
-    # cziso restore clonezilla-live-myimage.iso zfs://mynas/mypool/myvol
-  
+    # cziso restore clonezilla-live-myimage.50G.iso zfs://mynas/mypool/myvol
+      
 After this command completes, **myvol** will now be ready for you to use.  To test the image, ensure you have X forwarding enabled and run the following command: ::
  
     # cziso test zfs://mynas/mypool/myvol
@@ -54,3 +54,23 @@ To view help information for a particular command, run ::
 E.g., ::
 
     # cziso create help
+    
+Supported formats
+---------------
+
+The cziso tool supports the following image formats: ZFS vol, raw file, and qcow2 file.  
+
+When specifying a ZFS image vol, use the format: **zfs://mynas/mypool/myvol**
+
+When specifying a raw image file, use the format: **file:///abs/path/to/file.img** or **file:///abs/path/to/file.raw**
+
+When specifying a qcow2 image file, use the format: **file:///abs/path/to/file.qcow2**
+
+Increase image size
+---------------
+
+By default, the **cziso restore** command will create a new restore image using the original size of the image.  If you want to make a larger image, use the **size** option. For example, ::
+
+    # cziso restore clonezilla-live-myimage.50G.iso zfs://mynas/mypool/myvol size=100
+    
+This will create a 100 GB image and use Clonezilla's advanced "-k1" option to resize the partition table in proportion to its original size. 
