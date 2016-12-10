@@ -2,6 +2,7 @@ import cziso
 import cziso.virtualmachine
 import logging
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -21,8 +22,9 @@ class Clonezilla:
 		self.config = config
 		self.clonezilla_custom = ClonezillaIso(config, "custom")
 		self.clonezilla_regular = ClonezillaIso(config, "regular")
-		self.create_expect = config.get("cziso", "create_expect_template")
-		self.restore_expect = config.get("cziso", "restore_expect_template")
+		self.create_expect = config.get_path("cziso", "create_expect_template")
+		self.restore_expect = config.get_path(
+			"cziso", "restore_expect_template")
 		self.priv_interface = config.get("cziso", "private_iface")
 		self.temp_dir = config.get("cziso", "temp_directory")
 		self.genisoimage_command = config.get("cziso", "genisoimage_command")
@@ -50,6 +52,7 @@ class Clonezilla:
 		if not image.mount():
 			cziso.abort("Unable to mount input image %s" % image)
 		image.fsck()
+		image.unmount()
 
 		# mount temp directory to place iso when complete
 		tmp = self.create_temp_directory()
@@ -62,11 +65,21 @@ class Clonezilla:
 			cziso.abort("Unable to create a NFS export.  No ip or netmask")
 		cziso.create_nfs_export(tmp, ip)
 
+		# check that we don't overwrite an existing ISO file
+		generated_iso_filename = Clonezilla.get_cz_restore_iso_filename(image)
+		generated_iso_path = os.path.join(tmp, generated_iso_filename)
+		# insert the disk size into the file name
+		new_iso_filename = Clonezilla.get_cziso_restore_iso_filename(image)
+		candidate_dst_file = os.path.join(self.temp_dir, new_iso_filename)
+		if out_dir is not None:
+			candidate_dst_file = os.path.join(out_dir, new_iso_filename)
+		dst_file = cziso.increment_filename(candidate_dst_file)
+
 		# launch Clonezilla
 		libvirt_file = cziso.virtualmachine.LibvirtFile(self.config.config_dir)
 		libvirt_file.add_disk(
 			"file", "cdrom", self.clonezilla_custom.get_or_download())
-		libvirt_file.add_disk("block", "disk", image.get_mount())
+		image.add_to_libvirt(libvirt_file)
 		libvirt_file.set_interface(self.priv_interface)
 		vm = cziso.virtualmachine.VM()
 		status = vm.launch(libvirt_file.get_xml())
@@ -83,15 +96,10 @@ class Clonezilla:
 take a few mins to boot the Clonezilla Live VM before you see any output""")
 		subprocess.call("expect %s" % expect_path, shell=True)
 
-		# get ISO image
-		iso_file = "clonezilla-live-%s.iso" % image.get_image_id()
-		src_file = os.path.join(tmp, iso_file)
-		dst_file = os.path.join(self.temp_dir, iso_file)
-		if out_dir is not None:
-			dst_file = os.path.join(out_dir, iso_file)
-		if os.path.exists(src_file):
-			self.logger.debug("Moving ISO file %s to %s" % (src_file, dst_file))
-			os.rename(src_file, dst_file)
+		if os.path.exists(generated_iso_path):
+			self.logger.debug(
+				"Moving ISO file %s to %s" % (generated_iso_path, dst_file))
+			os.rename(generated_iso_path, dst_file)
 			self.logger.info(
 				"Clonezilla restore ISO file is now ready at %s" % dst_file)
 		else:
@@ -102,6 +110,31 @@ take a few mins to boot the Clonezilla Live VM before you see any output""")
 		cziso.remove_nfs_export(tmp, ip)
 		shutil.rmtree(tmp)
 		image.unmount()
+
+	@staticmethod
+	def get_cziso_restore_iso_filename(image):
+		"""
+		Get the restore ISO filename that Clonezilla generates
+
+		:param image: An object of type cziso.image.Image
+
+		:return: A string containing the restore ISO filename
+		"""
+		iso_base, iso_ext = os.path.splitext(
+			Clonezilla.get_cz_restore_iso_filename(image))
+		new_iso_filename = "%s.%iG%s" % (iso_base, image.get_size(), iso_ext)
+		return new_iso_filename
+
+	@staticmethod
+	def get_cz_restore_iso_filename(image):
+		"""
+		Get the restore ISO filename that cziso generates
+
+		:param image: An object of type cziso.image.Image
+
+		:return: A string containing the restore ISO filename
+		"""
+		return  "clonezilla-live-%s.iso" % image.get_image_id()
 
 	def create_temp_directory(self):
 		"""
@@ -123,18 +156,14 @@ take a few mins to boot the Clonezilla Live VM before you see any output""")
 		:return:  Returns if successful; otherwise aborts
 		"""
 		self.logger.info("Modifying image %s" % image)
-		if not image.mount():
-			cziso.abort("Unable to mount image %s" % image)
-		if target_image is not None:
-			if not target_image.mount():
-				cziso.abort("Unable to mount target image" % target_image)
 
 		libvirt_file = cziso.virtualmachine.LibvirtFile(self.config.config_dir)
-		libvirt_file.add_disk("file", "cdrom",
-		                      self.clonezilla_regular.get_or_download())
-		libvirt_file.add_disk("block", "disk", image.get_mount())
+		libvirt_file.add_disk(
+			"file", "cdrom", self.clonezilla_regular.get_or_download())
+		image.add_to_libvirt(libvirt_file)
 		if target_image is not None:
-			libvirt_file.add_disk("block", "disk", target_image.get_mount())
+			target_image.add_to_libvirt(libvirt_file)
+
 		vm = cziso.virtualmachine.VM()
 		vm.launch(libvirt_file.get_xml())
 		vm.attach_vnc()
@@ -153,13 +182,12 @@ take a few mins to boot the Clonezilla Live VM before you see any output""")
 		self.logger.info("Restoring image %s to image %s" % (iso_file, image))
 		if not os.path.exists(iso_file):
 			cziso.abort("ISO file %s does not exist" % iso_file)
-		if not image.mount():
-			cziso.abort("Unable to mount image %s" % image)
 
 		# launch Clonezilla
 		libvirt_file = cziso.virtualmachine.LibvirtFile(self.config.config_dir)
 		libvirt_file.add_disk("file", "cdrom", iso_file)
-		libvirt_file.add_disk("block", "disk", image.get_mount())
+		image.add_to_libvirt(libvirt_file)
+
 		vm = cziso.virtualmachine.VM()
 		status = vm.launch(libvirt_file.get_xml())
 		if status != 0:
@@ -179,6 +207,20 @@ mins to boot the Clonezilla Live VM before you see any output""")
 		os.remove(expect_path)
 		self.logger.info("Restored image %s is now ready" % image)
 
+	@staticmethod
+	def parse_image_size_from_iso_filename(filename):
+		"""
+		Parse and return the original image size from a restore ISO filename.
+
+		:param filename: The restore ISO filename
+
+		:return: An integer representing the original image size in GB
+		"""
+		matcher = re.search("\.(\d+)G\.", filename)
+		if matcher is None:
+			cziso.abort("Unable to parse image size from restore ISO filename")
+		return int(matcher.group(1))
+
 	def test_image(self, image):
 		"""
 		Test image by starting up a VM
@@ -188,11 +230,9 @@ mins to boot the Clonezilla Live VM before you see any output""")
 		:return:  Returns if successful; otherwise aborts
 		"""
 		self.logger.info("Testing image %s" % image)
-		if not image.mount():
-			cziso.abort("Unable to mount image %s" % image)
 
 		libvirt_file = cziso.virtualmachine.LibvirtFile(self.config.config_dir)
-		libvirt_file.add_disk("block", "disk", image.get_mount())
+		image.add_to_libvirt(libvirt_file)
 		vm = cziso.virtualmachine.VM()
 		vm.launch(libvirt_file.get_xml())
 		vm.attach_vnc()

@@ -114,13 +114,14 @@ class LibvirtFile:
 		self.disk_ids = {}
 		self.iface_xml = ""
 
-	def add_disk(self, disk_type, device_type, disk):
+	def add_disk(self, disk_type, device_type, disk, qemu_type="raw"):
 		"""
 		Add a disk to the libvirt file
 
 		:param disk_type: A string containing the type of disk (file, block)
 		:param device_type: A string containing the type of device (disk, cdrom)
 		:param disk: The path to the disk
+		:param qemu_type: A string containing the format of disk (e.g., raw)
 		:return:
 		"""
 		xml_type = "%s_%s" % (disk_type, device_type)
@@ -134,7 +135,11 @@ class LibvirtFile:
 		if not os.path.exists(f):
 			cziso.abort("Unable to find libvirt file %s" % f)
 
-		values = {'id': chr(self.disk_ids[xml_type]), xml_type: disk}
+		values = {
+			'id': chr(self.disk_ids[xml_type]),
+			xml_type: os.path.realpath(disk),
+			'qemu_type': qemu_type
+		}
 		self.disk_xmls.append(cziso.fill_template(f, **values))
 
 	def get_name(self):
