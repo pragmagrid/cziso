@@ -20,7 +20,7 @@ This will launch a customized Clonezilla Live VM instance to generate a restore 
 
     # cziso restore clonezilla-live-myimage.50G.iso zfs://mynas/mypool/myvol
       
-After this command completes, **myvol** will now be ready for you to use.  To test the image, ensure you have X forwarding enabled and run the following command: ::
+After this command completes, **myvol** will now be ready for you to use.  To restore to other format, see `Supported formats`_ below. To test the image, ensure you have X forwarding enabled and run the following command: ::
  
     # cziso test zfs://mynas/mypool/myvol
   
