@@ -411,7 +411,7 @@ class ZfsVol(Image):
 			return False
 		self.logger.info("Created ZFS vol %s (%i GB)" % (self, size))
 		self.mountpoint = out[1]
-		print True
+		return True
 
 	def delete(self):
 		"""
