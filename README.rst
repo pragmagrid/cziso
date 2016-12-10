@@ -74,3 +74,25 @@ By default, the **cziso restore** command will create a new restore image using 
     # cziso restore clonezilla-live-myimage.50G.iso zfs://mynas/mypool/myvol size=100
     
 This will create a 100 GB image and use Clonezilla's advanced "-k1" option to resize the partition table in proportion to its original size. 
+
+Upload to Google drive
+---------------
+The cziso tool contains a convenience command to upload image files to Google drive. To use this feature, you must do the following:
+
+#. Install the `Google Python API Client <https://developers.google.com/drive/v3/web/quickstart/python>`_. :: 
+
+#. Obtain `OAuth2 service account credentials <https://developers.google.com/identity/protocols/OAuth2ServiceAccount>`_. ::
+
+Once you have your OAuth2 credentials, you can download them in JSON format (e.g., mycreds-4d8f69195c82.json) and copy them to the **/opt/cziso/etc** directory.  Then edit the **/opt/cziso/etc/cziso.cfg** file and insert the filename in the field **service_account_credentials**.  E.g., ::
+
+    service_account_credentials = mycreds-4d8f69195c82.json
+
+You will also need to allow your service account credentials to edit any folders you wish to upload too.  To give edit permissions on a Google drive folder, left click on the desired folder(s) via the Google drive web interface and click the **share** option.  If your project was called **myproject** and the service account name was **myservice**, then insert the email address of your service account as **myservice@myproject.iam.gserviceaccount.com** under the People box and click the **Done** button.
+
+After this, you should be able to use the **cziso upload** command to upload, for example, a restore ISO **clonezilla-live-myimage.50G.iso** to Google drive folder **0B3cw74KWQ3fXcmd3RHBCTV9KaUU**. ::
+
+    # cziso upload clonezilla-live-myimage.50G.iso 0B3cw74KWQ3fXcmd3RHBCTV9KaUU
+    
+ To see more upload options, type ::
+ 
+    # cziso upload help
