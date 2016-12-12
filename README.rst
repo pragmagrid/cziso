@@ -75,6 +75,17 @@ By default, the **cziso restore** command will create a new restore image using 
     
 This will create a 100 GB image and use Clonezilla's advanced "-k1" option to resize the partition table in proportion to its original size. 
 
+Advanced mode
+---------------
+
+If the convenience commands that cziso provides are not sufficient for your needs, there is a **cziso modify** command that you can use to launch regular Clonezilla in interactive mode.  To use, ensure you have X forwarding enabled and type ::
+
+    # cziso modify zfs://mynas/mypool/myvol
+    
+This will launch Clonezilla with **myimage.img** attached as disk **/dev/vda**.  If you need two disks attached, you can add a second disk as **/dev/vdb** with the **target-image** option ::
+
+    # cziso modify zfs://mynas/mypool/myvol target-image=zfs://mynas/mypool/myvol2
+
 Upload to Google drive
 ---------------
 The cziso tool contains a convenience command to upload image files to Google drive. To use this feature, you must do the following:
