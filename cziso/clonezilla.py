@@ -169,6 +169,8 @@ take a few mins to boot the Clonezilla Live VM before you see any output""")
 		vm.attach_vnc()
 		vm.clean()
 		image.unmount()
+		if target_image is not None:
+			target_image.unmount()
 
 	def restore_clonezilla_iso(self, iso_file, image):
 		"""

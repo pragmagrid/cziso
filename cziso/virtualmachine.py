@@ -125,10 +125,10 @@ class LibvirtFile:
 		:return:
 		"""
 		xml_type = "%s_%s" % (disk_type, device_type)
-		if xml_type in self.disk_ids:
-			self.disk_ids[xml_type] += 1
+		if device_type in self.disk_ids:
+			self.disk_ids[device_type] += 1
 		else:
-			self.disk_ids[xml_type] = ord('a')
+			self.disk_ids[device_type] = ord('a')
 
 		f = os.path.join(self.config_dir, "%s-%s-%s" % (
 			disk_type, device_type, LibvirtFile.TEMPLATE_FILE))
@@ -136,7 +136,7 @@ class LibvirtFile:
 			cziso.abort("Unable to find libvirt file %s" % f)
 
 		values = {
-			'id': chr(self.disk_ids[xml_type]),
+			'id': chr(self.disk_ids[device_type]),
 			xml_type: os.path.realpath(disk),
 			'qemu_type': qemu_type
 		}
