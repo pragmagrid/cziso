@@ -1,6 +1,5 @@
+import cziso
 from cziso.commands import CommonArgs, Arg, Opt
-import cziso.commands
-import cziso.gdrive
 
 
 class Command(cziso.commands.Command):
@@ -31,7 +30,15 @@ class Command(cziso.commands.Command):
 	def run(self, config, args):
 		arg_vals = self.parse_args(args)
 
-		gdrive = cziso.gdrive.GdriveAuth(config)
+		gdrivemodule = None
+		try:
+			gdrivemodule = __import__("cziso.gdrive")
+		except ImportError as e:
+			cziso.abort("Missing %s" % str(e))
+
+		gdrive = gdrivemodule.GdriveAuth(config)
+
+
 		gdrive.upload(
 			arg_vals["file"],
 			arg_vals["gdrive_folder"],
