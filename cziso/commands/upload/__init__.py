@@ -38,7 +38,6 @@ class Command(cziso.commands.Command):
 
 		gdrive = gdrivemodule.GdriveAuth(config)
 
-
 		gdrive.upload(
 			arg_vals["file"],
 			arg_vals["gdrive_folder"],
