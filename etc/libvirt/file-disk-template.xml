@@ -1,0 +1,5 @@
+   <disk type='file' device='disk'>
+      <driver name='qemu' type='$qemu_type' cache='none'/>
+      <source file='$file_disk'/>
+      <target dev='vd$id' bus='virtio'/>
+    </disk>

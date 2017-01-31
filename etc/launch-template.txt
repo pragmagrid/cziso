@@ -1,0 +1,11 @@
+
+---------------------------------------------------------------
+Opening vncviewer to port $vnc_port
+
+When the console is launched, let it launch itself to the bash
+command-line (~1m). Then type the following two commands:
+
+# ifconfig eth0 $ip netmask $netmask
+# mount 10.1.1.1:$temp_dir /home/partimag
+# /usr/share/drbl/samples/gen-rec-iso -b /dev/vda $vm_id
+---------------------------------------------------------------

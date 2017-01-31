@@ -1,0 +1,6 @@
+    <interface type='bridge'>
+      <source bridge='$iface'/>
+      <target dev='vnet1'/>
+      <alias name='net0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </interface>

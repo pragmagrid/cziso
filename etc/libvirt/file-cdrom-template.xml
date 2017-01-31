@@ -1,0 +1,6 @@
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file='$file_cdrom'/>
+      <target dev='hd$id' bus='ide'/>
+      <readonly/>
+    </disk>

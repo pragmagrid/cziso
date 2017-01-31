@@ -1,0 +1,5 @@
+    <disk type='block' device='disk'>
+      <driver name='qemu' type='$qemu_type' cache='none' io='native'/>
+      <source dev='$block_disk'/>
+      <target dev='vd$id' bus='virtio'/>
+    </disk>
