@@ -31,6 +31,7 @@ Requirements
 * libvirt (version 0.10.2 or later)
 * tigervnc
 * Python 2.6 or later
+* python-httplib2 (for Google drive upload capability)
 
 Installation
 ---------------
