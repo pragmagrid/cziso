@@ -120,6 +120,7 @@ class Image:
 		for partition in self.partitions:
 			out, rc = cziso.run_command("fsck -y %s" % partition)
 			if rc != 0:
+				self.unmount()
 				cziso.abort(
 					"Problem running fsck -y on partition: %s" % "\n".join(out))
 			self.logger.debug("fsck output: %s" % "\n".join(out))
