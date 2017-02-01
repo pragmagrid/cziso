@@ -31,10 +31,12 @@ expect {
         expect "Are you sure you want to continue?"
         expect "\\\[y/N] "
         send "y\n"
+        expect "You can burn"
         expect "done!"
         send "shutdown now\n"
         expect "press ENTER to continue:"
         send "\n"
+        send_user "It may take a few minutes to shutdown the VM"
         expect eof
     }
 }
