@@ -35,16 +35,19 @@ size but can be larger if desired""",
 		if out_img.exists() and not self.is_arg_true(arg_vals["overwrite"]):
 			cziso.abort("""Image %s already exists; use overwrite=true to
 replace existing image""" % out_img)
-		if not out_img.exists():
-			image_size = Clonezilla.parse_image_size_from_iso_filename(
-				arg_vals["iso"])
-			if arg_vals["size"] != "":
-				if int(arg_vals["size"]) < image_size:
-					cziso.abort("""Original image size is %i GB.  Please specify
+		if out_img.exists():
+			# we remove to get a new creation timestamp on ZFS
+			out_img.delete()
+
+		image_size = Clonezilla.parse_image_size_from_iso_filename(
+			arg_vals["iso"])
+		if arg_vals["size"] != "":
+			if int(arg_vals["size"]) < image_size:
+				cziso.abort("""Original image size is %i GB.  Please specify
 an image size >= %i GB""" % (image_size, image_size))
-				image_size = int(arg_vals["size"])
-			if not out_img.create(image_size):
-				cziso.abort("Unable to create image %s" % arg_vals["image"])
+			image_size = int(arg_vals["size"])
+		if not out_img.create(image_size):
+			cziso.abort("Unable to create image %s" % arg_vals["image"])
 
 		cz = Clonezilla(config)
 		cz.restore_clonezilla_iso(arg_vals["iso"], out_img)
