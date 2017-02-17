@@ -7,6 +7,8 @@ import re
 
 
 class Image:
+	CZ_IMAGE_NAME_LEN = 32
+
 	"""
 	Convenience class for handling VM images
 	"""
@@ -294,7 +296,8 @@ class QemuImg(Image):
 
 		:return: A string containing the ID basename of the image w/o its suffix
 		"""
-		return os.path.splitext(os.path.basename(self.file))[0]
+		image_id = os.path.splitext(os.path.basename(self.file))[0]
+		return image_id[0:Image.CZ_IMAGE_NAME_LEN]
 
 	def get_mount(self, libvirt=False):
 		"""
@@ -446,7 +449,8 @@ class ZfsVol(Image):
 
 		:return: A string containing the vol name of the image
 		"""
-		return "%s-%s" % (self.pool, self.vol)
+		image_id = "%s-%s" % (self.pool, self.vol)
+		return image_id[0:Image.CZ_IMAGE_NAME_LEN]
 
 	def get_mount(self, libvirt=False):
 		"""
