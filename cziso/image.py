@@ -7,7 +7,7 @@ import re
 
 
 class Image:
-	CZ_IMAGE_NAME_LEN = 32
+	CZ_IMAGE_NAME_LEN = 31
 
 	"""
 	Convenience class for handling VM images
