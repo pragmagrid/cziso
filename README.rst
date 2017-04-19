@@ -1,5 +1,3 @@
-.. highlight:: rest
-
 cziso
 ===============
 .. contents::
@@ -69,7 +67,7 @@ The cziso tool supports the following image formats: ZFS vol, raw file, and qcow
 
 When specifying a ZFS image vol, use the format: **zfs://mynas/mypool/myvol**
 
-When specifying a raw image file, use the format: **file:///abs/path/to/file.img** or **file:///abs/path/to/file.raw**
+When specifying a raw image file, use the format: **file:///abs/path/to/file.img** or **file:///abs/path/to/file.raw** or **file:///abs/path/to/file.vda**
 
 When specifying a qcow2 image file, use the format: **file:///abs/path/to/file.qcow2**
 
