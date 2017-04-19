@@ -34,7 +34,6 @@ class Command(cziso.commands.Command):
 
 	def run(self, config, args):
 		arg_vals = self.parse_args(args)
-		print arg_vals
 		try:
 			__import__("cziso.gdrive")
 		except ImportError as e:
