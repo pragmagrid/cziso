@@ -227,7 +227,7 @@ class QemuImg(Image):
 	"""
 	Convenience class for handling RAW VM images
 	"""
-	URI_PATTERN = "file://(/\S+\.(img|raw|qcow2))"
+	URI_PATTERN = "file://(/\S+\.(img|raw|vda|qcow2))"
 
 	def __init__(self, image):
 		"""

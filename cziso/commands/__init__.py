@@ -55,7 +55,7 @@ class ImageArg(Arg):
 		Possible URI formats are:
 
 			zfs://nas_name/pool_name/vol_name
-			file:///path/to/file.[img,raw]
+			file:///path/to/file.[img,raw,vda,qcow2]
 			"""
 
 	def __init__(self, name):
