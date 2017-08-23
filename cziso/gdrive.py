@@ -6,9 +6,11 @@ import os
 
 class GdriveAuth:
 	SCOPE = "https://www.googleapis.com/auth/drive"
+	FILE_FIELDS = "files(id, name, mimeType, kind, md5Checksum, size)"
 
 	def __init__(self, config):
 		self.logger = logging.getLogger(self.__module__)
+		self.temp_dir = config.get("cziso", "temp_directory")
 		self.service_account_credentials = config.get_path(
 			"google", "service_account_credentials")
 		self.chunk_size = int(config.get("google", "chunk_size"))
@@ -98,6 +100,33 @@ https://developers.google.com/api-client-library/python/start/installation
 						uploaded_megabytes, total_megabytes, percent_progress))
 		return response['id']
 
+	def create_dir_md5sums_file(self, folder_id, name):
+		"""
+		Create a new md5sum file for the specified directory
+
+		:param folder_id: The Google drive id for the folder
+
+		:return: A string containing the path to a newly created md5sum file
+		"""
+		query = "(not name contains 'md5sums.txt') and mimeType != 'application/vnd.google-apps.folder' and '%s' in parents" % folder_id
+		results = self.drive.files().list(q=query,fields=GdriveAuth.FILE_FIELDS).execute()
+
+		items = results.get('files', [])
+		if not items:
+			return None
+
+		md5sum_filename = "%s-md5sums.txt" % name
+		md5sum_filepath = os.path.join(self.temp_dir, md5sum_filename)
+		self.logger.debug("Creating temporary md5sum file %s" % md5sum_filepath)
+		f = open(md5sum_filepath, "w")
+		if f is None:
+			cziso.abort("Unable to write md5sums to file %s" % md5sum_filepath)
+		for item in items:
+			self.logger.debug('Adding %s %s' % (item['md5Checksum'], item['name']))
+			f.write("%s  %s\n" % (item['md5Checksum'], item['name']))
+		f.close()
+		return (md5sum_filepath, md5sum_filename)
+
 	def get_file(self, filename, folder_id):
 		"""
 		Get the Google drive id for matching filename in Google drive folder
@@ -108,7 +137,8 @@ https://developers.google.com/api-client-library/python/start/installation
 		:return: A string representing the Google id for file
 		"""
 		query = "name = '%s' and '%s' in parents" % (filename, folder_id)
-		results = self.drive.files().list(q=query).execute()
+		results = self.drive.files().list(q=query,fields=GdriveAuth.FILE_FIELDS).execute()
+
 		items = results.get('files', [])
 		if not items:
 			return None
@@ -158,12 +188,12 @@ https://developers.google.com/api-client-library/python/start/installation
 
 		if folder_id is None:
 			folder_id = self.default_drive_dir_id
-		if self.get_metadata(folder_id) is None:
+		folder_metadata = self.get_metadata(folder_id)
+		if folder_metadata is None:
 			cziso.abort("Google Drive folder %s does not exist" % folder_id)
 
 		self.logger.info(
 			"Uploading file %s to Gdrive %s" % (file_path, folder_id))
-
 		existing_file = self.get_file(filename, folder_id)
 		if existing_file is not None and revision is False:
 			cziso.abort("File %s already exists in drive folder %s. %s" % (
@@ -177,6 +207,20 @@ https://developers.google.com/api-client-library/python/start/installation
 		self.logger.info("Upload Complete!")
 		self.logger.info(
 			"Google drive id for %s is %s" % (file_path, id))
+
+		self.logger.info("Generating new md5sum for directory %s" % folder_id)
+		(md5sum_filepath, md5sum_filename) = self.create_dir_md5sums_file(
+			folder_id, folder_metadata['name'])
+		existing_file = self.get_file(md5sum_filename, folder_id)
+		request, media = self._request_create_or_update(
+			existing_file, md5sum_filepath, folder_id, md5sum_filename)
+		md5sum_id = self._upload_file(request, media)
+		if md5sum_id is not None:
+			self.logger.info("md5sum file uploaded to directory %s" % folder_id)
+		else:
+			self.logger.error("Unable to upload md5sum file to directory %s" % folder_id)
+		os.remove(md5sum_filepath)
+
 		return id
 
 
