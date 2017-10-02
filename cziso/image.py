@@ -425,6 +425,11 @@ class ZfsVol(Image):
 		"""
 		if self.is_mapped():
 			self.unmount()
+
+		if not self.promote_cloned_vols():
+			self.logger.error("Volume %s is not removable" % self.vol)
+			return False
+
 		out, rc = cziso.run_command("rocks remove host storageimg %s %s %s" % (
 			self.nas, self.pool, self.vol))
 		if rc != 0:
@@ -510,6 +515,30 @@ class ZfsVol(Image):
 			return False
 		self.mountpoint = out[1]
 		self.logger.info("Mounted zvol %s to %s" % (self.vol, self.mountpoint))
+		return True
+
+	def promote_cloned_vols(self):
+		"""
+		Find out if there any dependent vols on our vol.  If so promote them so they
+		are independent of ours.
+
+		:return: True if no dependent vols or if successfully promoted.  False if
+		error.
+		"""
+		out, rc = cziso.run_command("ssh %s zfs list -o name,origin" % self.nas)
+		children_re = re.compile("(\S+)\s+%s/%s@\S+" % (self.pool, self.vol))
+		child_vols = []
+		for line in out:
+			matcher = children_re.match(line)
+			if matcher is not None:
+				child_vols.append(matcher.group(1))
+		for vol in child_vols:
+			self.logger.info("Promoting depending volume %s (dependent on %s)" % (vol, self.vol))
+			out, rc = cziso.run_command("ssh %s zfs promote %s" % (self.nas, vol))
+			if rc != 0:
+				self.logger.error("Error promoting volume %s" % vol)
+				return False
+			self.logger.info("Volume %s successfully promoted" % vol)
 		return True
 
 	def unmount(self):
